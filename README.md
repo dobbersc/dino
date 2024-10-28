@@ -1,2 +1,2 @@
 # dino
-Implementations of the DINO Framwork from "Emerging Properties in Self-Supervised Vision Transformers"
+Implementation of the DINO Framework from "Emerging Properties in Self-Supervised Vision Transformers"
