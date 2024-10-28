@@ -37,8 +37,23 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "black~=24.10.0",
+    "mypy~=1.13.0",
 ]
 
 [tool.black]
 line-length = 120
 target-version = ["py310"]
+
+[tool.mypy]
+check_untyped_defs = true
+disallow_any_generics = true
+disallow_untyped_defs = true
+no_implicit_optional = true
+no_implicit_reexport = true
+show_error_codes = true
+strict_equality = true
+warn_redundant_casts = true
+warn_return_any = true
+warn_unreachable = true
+warn_unused_configs = true
+warn_unused_ignores = true
