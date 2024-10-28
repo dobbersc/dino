@@ -32,3 +32,4 @@ dependencies = [
 
 [project.urls]
 "Repository" = "https://github.com/dobbersc/dino"
+"Paper" = "https://arxiv.org/abs/2104.14294"
