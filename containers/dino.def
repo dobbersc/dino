@@ -1,0 +1,14 @@
+Bootstrap: docker
+From: python:3.10
+
+%files
+    ${PWD} dino
+
+%post
+    export PIP_ROOT_USER_ACTION="ignore"
+    python -m pip install --upgrade pip
+    pip install --no-cache-dir ./dino
+
+%test
+    echo "Checking installation..."
+    python -c "import dino; dino.__version__" && echo "Success!"

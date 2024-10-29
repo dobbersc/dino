@@ -32,3 +32,23 @@ For development, install the package, including the development dependencies:
 git clone https://github.com/dobbersc/dino
 pip install -e ./dino[dev]
 ```
+
+## Apptainer Containers
+
+We provide Apptainer definition files in the `containers` directory.
+For a standard installation, build the container by executing the following from the root of the repository:
+
+```bash
+apptainer build containers/dino.sif containers/dino.def
+```
+
+#### Development
+
+For an installation in a development environment, build the container by executing the following commands from the root of the repository:
+
+```bash
+apptainer build containers/dino-dev.sif containers/dino-dev.def
+export APPTAINER_BINDPATH="${PWD}:/dino"
+```
+
+*Note that the bind path environment variable must be set for each development session when using the container.*
