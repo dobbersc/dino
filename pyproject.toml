@@ -27,6 +27,7 @@ classifiers = [
 ]
 keywords = ["knowledge distillation with no labels", "self-supervised learning", "deep learning", "computer vision"]
 dependencies = [
+    "numpy~=2.1.0",
     "torch~=2.5.0",
 ]
 
@@ -177,4 +178,4 @@ unfixable = [
 convention = "google"
 
 [tool.ruff.lint.isort]
-forced-separate = ["translator", "tests"]
+forced-separate = ["dino", "tests"]
