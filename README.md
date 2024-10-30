@@ -33,6 +33,34 @@ git clone https://github.com/dobbersc/dino
 pip install -e ./dino[dev]
 ```
 
+#### Jupyter-Notebooks
+To keep version control clean, only `.py` files are tracked, and `.ipynb` notebooks are ignored. To recreate a notebook from a `.py` file with [jupytext](https://jupytext.readthedocs.io/en/latest/using-cli.html):
+
+1. **Convert `.py` to `.ipynb`:**
+    ```bash
+    jupytext --to ipynb your_notebook.py
+    ```
+2. **Set up Syncing:**
+    ```bash
+    jupytext --set-formats ipynb,py:percent your_notebook.ipynb
+    jupytext --sync src/**/*.ipynb # this has to be manually triggered
+    ```
+3. **Setup vscode task (optional):** 
+    ```json
+    // .vscode/tasks.json
+    {
+        "version": "2.0.0",
+        "tasks": [
+            {
+                "label": "jupytext: Sync all .ipynb files",
+                "type": "shell",
+                "command": ".venv/bin/jupytext --sync src/**/*.ipynb",
+                "group": "build"
+            }
+        ]
+    }
+    ```
+
 ## Apptainer Containers
 
 We provide Apptainer definition files in the `containers` directory.

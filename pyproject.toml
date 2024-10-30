@@ -179,3 +179,6 @@ convention = "google"
 
 [tool.ruff.lint.isort]
 forced-separate = ["dino", "tests"]
+
+[tool.jupytext]
+formats = "ipynb,py:percent"
