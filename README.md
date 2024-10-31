@@ -11,8 +11,22 @@ To install the `dino` Python package, clone this GitHub repository and simply in
 git clone https://github.com/dobbersc/dino
 pip install ./dino
 ```
-
 This installation also contains the experiment scripts and evaluation results.
+
+**Cloning repo on the cluster:**
+```bash
+# ensure the identity is added on your local machine
+ssh-add ~/.ssh/id_rsa 
+
+# ssh agent port forwarding / Alternatively set ForwardAgent yes in your host config
+ssh -A hydra 
+
+git clone git@github.com:dobbersc/dino.git
+```
+
+
+**Installing package:**
+
 If you only are interested in the Python package directly (without the experiments), install the `dino`
 package directly from GitHub using pip:
 
@@ -61,6 +75,9 @@ To keep version control clean, only `.py` files are tracked, and `.ipynb` notebo
     }
     ```
 
+4. **Jupytext vscode extension**
+Install Jupytext for Notebooks (congyiwu) and open .py files as notebook.
+
 ## Apptainer Containers
 
 We provide Apptainer definition files in the `containers` directory.
@@ -68,6 +85,11 @@ For a standard installation, build the container by executing the following from
 
 ```bash
 apptainer build containers/dino.sif containers/dino.def
+```
+
+mounted version
+```bash
+apptainer run --bind ~/my_code:/opt/your_repo /opt/apps/pytorch-2.0.1-gpu.sif
 ```
 
 #### Development

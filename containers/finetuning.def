@@ -1,0 +1,16 @@
+Bootstrap: localimage
+From: /opt/apps/pytorch-2.0.1-gpu.sif
+
+
+%files
+    ${PWD} dino
+
+%post
+    # Install any additional dependencies here if needed
+    export PIP_ROOT_USER_ACTION="ignore"
+    python -m pip install --upgrade pip
+    pip install --no-cache-dir -e ./dino[dev]
+
+%test
+    echo "Checking installation..."
+    python -c "import finetuning; finetuning.__version__" && echo "Success!"
