@@ -10,4 +10,4 @@
 cp /home/space/datasets-sqfs/imagenet_2012_train_set_small.sqfs /tmp/
 
 # 2. bind the squashed dataset to your apptainer environment and run your script with apptainer
-apptainer run -B /tmp/imagenet_2012_train_set_small.sqfs:/input-data:image-src=/ /opt/apps/pytorch-2.0.1-gpu.sif python load_dataset.py
+apptainer exec -B /tmp/imagenet_2012_train_set_small.sqfs:/input-data:image-src=/ /home/pml20/dino/containers/finetuning.sif python test.py
