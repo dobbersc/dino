@@ -50,3 +50,17 @@ class Augmenter(nn.Module):
             ],
             dim=0,
         )
+
+
+class DefaultLocalAugmenter(Augmenter):
+    def __init__(self, num_augmentations: int = 8) -> None:
+        # TODO: Integrate default local transformations
+        super().__init__(transforms=lambda x: x, num_augmentations=num_augmentations)
+
+
+class DefaultGlobalAugmenter(Augmenter):
+    def __init__(self) -> None:
+        # TODO: Integrate default global transformations
+        first_global_transform = lambda x: x  # noqa: E731
+        second_global_transform = lambda x: x  # noqa: E731
+        super().__init__(transforms=[first_global_transform, second_global_transform], num_augmentations=(1, 1))
