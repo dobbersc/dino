@@ -5,7 +5,7 @@ from dino import config
 def save_model(model, model_name):
     # check if the model directory exists
     if not config.MODEL_DIR.exists():
-        MODEL_DIR.mkdir()
+        config.MODEL_DIR.mkdir()
     model_path = config.MODEL_DIR / model_name
     # check if the model file exists
     if model_path.exists():

@@ -14,7 +14,7 @@ cp /home/space/datasets-sqfs/$SQFS_FILENAME /tmp/
 DATA_TARGET_DIR=/input-data
 DATA_MOUNT="/tmp/$SQFS_FILENAME:$DATA_TARGET_DIR:image-src=/"
 APPTAINER_SIF=/home/pml20/dino/containers/finetuning.sif
-COMMAND="dino finetune --dataset imagenet"
+COMMAND="dino finetune"
 # COMMAND="python scripts/test.py"
 
 # 3. Bind the squashed dataset to the Apptainer environment and run the command
