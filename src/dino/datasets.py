@@ -1,12 +1,23 @@
-from pathlib import Path
-from PIL import Image
 import os
-from torch.utils.data import Dataset
 import random
+from collections.abc import Callable
+from pathlib import Path
+
+import PIL
+import torch
+from PIL.Image import Image
+from torch.utils.data import Dataset
+from torchvision import transforms
 
 
 class ImageNetDirectoryDataset(Dataset):
-    def __init__(self, data_dir, transform=None, path_wnids=None, num_sample_classes=None):
+    def __init__(
+        self,
+        data_dir: str | Path,
+        transform: Callable[[Image], torch.Tensor] | None = None,
+        path_wnids: str | Path | None = None,
+        num_sample_classes: int | None = None,
+    ):
         self.data_dir = data_dir
         self.transform = transform
         self.samples = []
@@ -54,7 +65,7 @@ class ImageNetDirectoryDataset(Dataset):
 
         if path_wnids is not None:
             self.class_idx_to_label = {}
-            with open(path_wnids, "r") as f:
+            with open(path_wnids) as f:
                 for line in f:
                     wnid, label = line.strip().split("\t", 1)  # Split each line by tab
                     if wnid in self.wnid_to_class_idx:
@@ -64,10 +75,10 @@ class ImageNetDirectoryDataset(Dataset):
     def __len__(self):
         return len(self.samples)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> tuple[Image | torch.Tensor, int]:
         image_path, label = self.samples[idx]
         # Open image
-        image = Image.open(image_path).convert("RGB")
+        image = PIL.Image.open(image_path).convert("RGB")
 
         # Apply transforms if provided
         if self.transform:
@@ -75,10 +86,29 @@ class ImageNetDirectoryDataset(Dataset):
 
         return image, label
 
-    def get_class_name(self, class_idx):
+    def get_class_name(self, class_idx: int) -> str | None:
         return self.class_idx_to_label.get(class_idx, None)
 
-    def get_image_by_class(self, class_idx):
+    def get_image_by_class(self, class_idx: int) -> Image | torch.Tensor:
         for idx, s in enumerate(self.samples):
             if s[1] == class_idx:
                 yield self.__getitem__(idx)[0]
+
+
+transform = transforms.Compose(
+    [
+        transforms.Resize((224, 224)),  # Resize to 224x224 for ImageNet models
+        transforms.ToTensor(),  # Convert to Tensor
+        transforms.Normalize(
+            mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
+        ),  # ImageNet normalization
+    ]
+)
+
+
+def unnorm(img: torch.Tensor) -> torch.Tensor:
+    # Unnormalize the image for display
+    mean = torch.tensor([0.485, 0.456, 0.406])
+    std = torch.tensor([0.229, 0.224, 0.225])
+    img = img * std[:, None, None] + mean[:, None, None]  # Unnormalize
+    return img.clamp(0, 1)

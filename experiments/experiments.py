@@ -8,7 +8,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.11.2
+#       jupytext_version: 1.16.4
 #   kernelspec:
 #     display_name: .venv
 #     language: python
@@ -50,18 +50,18 @@
 #
 
 # %%
-from finetuning.datasets import ImageNetDirectoryDataset
 import os
-from pathlib import Path
-from torchvision import transforms
-from torch.utils.data import DataLoader, Subset
-import torch
-import torch.nn as nn
-from torch import optim
-from tqdm import tqdm
-import matplotlib.pyplot as plt
-from itertools import islice
 import random
+from itertools import islice
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+import torch
+from finetuning.datasets import ImageNetDirectoryDataset
+from torch import nn, optim
+from torch.utils.data import DataLoader
+from torchvision import transforms
+from tqdm import tqdm
 
 # %%
 # cwd
@@ -73,14 +73,10 @@ transform = transforms.Compose(
     [
         transforms.Resize((224, 224)),  # Resize to 224x224 for ImageNet models
         transforms.ToTensor(),  # Convert to Tensor
-        transforms.Normalize(
-            mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
-        ),  # ImageNet normalization
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),  # ImageNet normalization
     ]
 )
-dataset = ImageNetDirectoryDataset(
-    imagenet_path, transform=transform, path_wnids=wnid_path, num_sample_classes=5
-)
+dataset = ImageNetDirectoryDataset(imagenet_path, transform=transform, path_wnids=wnid_path, num_sample_classes=5)
 
 dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
 # dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
@@ -115,7 +111,7 @@ def display_data(dataset, class_idx=None, predict=None):
     else:
         # pick random images
         img_indices = random.sample(range(len(dataset)), NUM_IMAGES)
-        raw_images, class_indices = zip(*[dataset[i] for i in img_indices])
+        raw_images, class_indices = zip(*[dataset[i] for i in img_indices], strict=False)
         titles = [f"g={dataset.get_class_name(g)[:max_length]}" for g in class_indices]
 
     if predict is not None:
@@ -123,14 +119,14 @@ def display_data(dataset, class_idx=None, predict=None):
         predictions = predict(raw_images)
         titles = [
             f"y={dataset.get_class_name(y)[:max_length]}\ng={dataset.get_class_name(g)[:max_length]}"
-            for y, g in zip(predictions, class_indices)
+            for y, g in zip(predictions, class_indices, strict=False)
         ]
 
     images = [unnorm(img) for img in raw_images]
 
     # display 4x4
     fig, ax = plt.subplots(2, 6, figsize=(12, 4))
-    for i, (img, ax) in enumerate(zip(images, ax.flatten())):
+    for i, (img, ax) in enumerate(zip(images, ax.flatten(), strict=False)):
         ax.imshow(img.permute(1, 2, 0).numpy())
         ax.axis("off")
         if titles is not None:
@@ -147,6 +143,7 @@ def predict_random(images):
     # Randomly predict the class of each image
     return [random.randint(0, NUM_CLASSES - 1) for _ in images]
 
+
 display_data(dataset, predict=predict_random)
 
 
@@ -156,17 +153,13 @@ def load_backbone(model_type="vit", pretrained_dino_weights=None):
         if pretrained_dino_weights is None:
             model = torch.hub.load("facebookresearch/dino:main", "dino_vits8")
         else:
-            raise NotImplementedError(
-                "Loading pretrained weights for ViT models is not yet supported"
-            )
+            raise NotImplementedError("Loading pretrained weights for ViT models is not yet supported")
 
     elif model_type == "resnet":
         if pretrained_dino_weights is None:
             model = torch.hub.load("facebookresearch/dino:main", "dino_resnet50")
         else:
-            raise NotImplementedError(
-                "Loading pretrained weights for ViT models is not yet supported"
-            )
+            raise NotImplementedError("Loading pretrained weights for ViT models is not yet supported")
 
     return model
 
@@ -251,14 +244,12 @@ def train(model, dataloader, criterion, optimizer, num_epochs=10):
             print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item()}")
 
 
-
 # %%
 train(model, dataloader, nn.CrossEntropyLoss(), optimizer, num_epochs=1)
 
 # %%
 # save the model
 torch.save(model.state_dict(), "model.pth")
-
 
 
 # %%
