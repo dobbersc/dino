@@ -3,8 +3,8 @@ from enum import Enum
 import torch
 from torch import nn
 
-from dino import utils
 from dino.models.dino_vision_transformer import vit_small
+from dino.utils.torch import load_model, save_model
 
 
 class LinearHead(nn.Module):
@@ -56,13 +56,13 @@ class ModelWithHead(nn.Module):
         return self.head(x)
 
     def save_head(self, model_name="head.pth"):
-        utils.save_model(self.head, model_name)
+        save_model(self.head, model_name)
 
     def save_backbone(self, model_name="backbone.pth"):
-        utils.save_model(self.model, model_name)
+        save_model(self.model, model_name)
 
     def save(self, model_name="model.pth"):
-        utils.save_model(self, model_name)
+        save_model(self, model_name)
 
 
 class ModelType(Enum):
@@ -111,7 +111,7 @@ def _load_backbone(
                 raise NotImplementedError(msg)
 
         if backbone_weights is not None:
-            state_dict = utils.load_model(backbone_weights)
+            state_dict = load_model(backbone_weights)
             model.load_state_dict(state_dict)
 
     return model
@@ -127,7 +127,7 @@ def _load_head(
         raise NotImplementedError(msg)
 
     if head_weights is not None:
-        state_dict = utils.load_model(head_weights)
+        state_dict = load_model(head_weights)
         head.load_state_dict(state_dict)
 
     return head

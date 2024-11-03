@@ -4,14 +4,13 @@ import argparse
 import ast
 import random
 
-import torch.nn as nn
-from torch.utils.data import DataLoader
 import torch
+from torch import nn
+from torch.utils.data import DataLoader
 
-from dino import datasets, utils, config
+from dino import config, datasets
 from dino.finetuning import FinetuningMode, fine_tune
 from dino.models.model_heads import ModelType, load_model_with_head
-from dino import config
 
 
 def train(args):
@@ -79,13 +78,17 @@ def finetune(args):
     criterion = nn.CrossEntropyLoss()
 
     # TODO: implement checkpointing
-    dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True,pin_memory=torch.cuda.is_available())
+    dataloader = DataLoader(
+        dataset, batch_size=args.batch_size, shuffle=True, pin_memory=torch.cuda.is_available()
+    )
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     fine_tune(model, dataloader, criterion, mode=mode, num_epochs=args.num_epochs, device=device)
     model.save_head(args.model_name)
     print(f"Model saved to {config.MODEL_DIR}/{args.model_name}")
 
+
 # TODO: add arg inputdata_path
+
 
 def add_finetune_subparser(subparsers):
     # Subcommand for fine-tuning

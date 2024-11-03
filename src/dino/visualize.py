@@ -10,6 +10,7 @@ DISPLAY_ROWS: int = 2
 DISPLAY_COLS: int = 6
 
 
+# TODO: save figure to file
 def display_data(dataset: ImageNetDirectoryDataset, class_idx=None, predict=None):
     # Assuming `dataset.get_image_by_class` is a generator
     max_length = 10
@@ -23,12 +24,9 @@ def display_data(dataset: ImageNetDirectoryDataset, class_idx=None, predict=None
         raw_images, class_indices = zip(*[dataset[i] for i in img_indices], strict=False)
         titles = [f"g={dataset.get_class_name(g)[:max_length]}" for g in class_indices]
 
-    print("len(raw_images):", len(raw_images))
     if predict is not None:
         # Assuming `predict` is a function that takes in a list of images and returns a list of predictions
-        print("Predicting...")
         predictions = predict(raw_images)
-        print("Predictions:", predictions)
         titles = [
             f"y={dataset.get_class_name(y)[:max_length]}\ng={dataset.get_class_name(g)[:max_length]}"
             for y, g in zip(predictions, class_indices, strict=False)

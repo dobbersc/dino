@@ -34,9 +34,7 @@ class Augmenter(nn.Module):
             raise ValueError(msg)
 
     def forward(self, image: Tensor) -> Tensor:
-        """
-
-        :param image:
+        """:param image:
         :return:
         """
         return torch.stack(
