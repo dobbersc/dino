@@ -99,7 +99,7 @@ select = [
     "FBT",
     "B",
     "A",
-    "COM",
+    # "COM",
     # "CPY",
     "C4",
     "DTZ",
@@ -108,7 +108,7 @@ select = [
     "EM",
     "EXE",
     # "FA",
-    "ISC",
+    # "ISC",
     "ICN",
     "LOG",
     "G",
@@ -144,6 +144,7 @@ select = [
     "PERF",
     # "FURB",
     "RUF",
+    "I",
 ]
 
 ignore = [
@@ -179,3 +180,9 @@ convention = "google"
 
 [tool.ruff.lint.isort]
 forced-separate = ["dino", "tests"]
+
+[tool.jupytext]
+formats = "ipynb,py:percent"
+
+[project.scripts]
+dino = "dino.__main__:entry_point"
