@@ -13,7 +13,14 @@ IMAGENET_TINY_WORDS = DATA_DIR / "tiny-imagenet-200" / "words.txt"
 
 
 def save_model(model, model_name):
+    # check if the model directory exists
+    if not MODEL_DIR.exists():
+        MODEL_DIR.mkdir()
     model_path = MODEL_DIR / model_name
+    # check if the model file exists
+    if model_path.exists():
+        # create a new file name
+        model_name = model_name.split(".")[0] + "_new.pth"
     torch.save(model.state_dict(), model_path)
 
 
