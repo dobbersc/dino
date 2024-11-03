@@ -84,12 +84,8 @@ We provide Apptainer definition files in the `containers` directory.
 For a standard installation, build the container by executing the following from the root of the repository:
 
 ```bash
+srun --partition=cpu-2h --pty bash
 apptainer build containers/dino.sif containers/dino.def
-```
-
-mounted version
-```bash
-apptainer run --bind ~/my_code:/opt/your_repo /opt/apps/pytorch-2.0.1-gpu.sif
 ```
 
 #### Development
@@ -97,6 +93,7 @@ apptainer run --bind ~/my_code:/opt/your_repo /opt/apps/pytorch-2.0.1-gpu.sif
 For an installation in a development environment, build the container by executing the following commands from the root of the repository:
 
 ```bash
+srun --partition=cpu-2h --pty bash
 apptainer build containers/dino-dev.sif containers/dino-dev.def
 export APPTAINER_BINDPATH="${PWD}:/dino"
 ```

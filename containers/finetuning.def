@@ -13,4 +13,4 @@ From: /opt/apps/pytorch-2.0.1-gpu.sif
 
 %test
     echo "Checking installation..."
-    python -c "import finetuning; finetuning.__version__" && echo "Success!"
+    dino --help && echo "Success"

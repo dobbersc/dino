@@ -1,22 +1,12 @@
-from pathlib import Path
-
+import os
 import torch
-
-ROOT_DIR = Path(__file__).parent.parent.parent
-
-DATA_DIR = ROOT_DIR / "data"
-
-MODEL_DIR = ROOT_DIR / "models"
-
-IMAGENET_TINY_DIR = DATA_DIR / "tiny-imagenet-200" / "train"
-IMAGENET_TINY_WORDS = DATA_DIR / "tiny-imagenet-200" / "words.txt"
-
+from dino import config
 
 def save_model(model, model_name):
     # check if the model directory exists
-    if not MODEL_DIR.exists():
+    if not config.MODEL_DIR.exists():
         MODEL_DIR.mkdir()
-    model_path = MODEL_DIR / model_name
+    model_path = config.MODEL_DIR / model_name
     # check if the model file exists
     if model_path.exists():
         # create a new file name
@@ -25,5 +15,32 @@ def save_model(model, model_name):
 
 
 def load_model(model_name):
-    model_path = MODEL_DIR / model_name
+    model_path = config.MODEL_DIR / model_name
     return torch.load(model_path)
+
+
+
+
+def list_directory_contents(directory_path):
+    """
+    List all files and directories inside a specified directory.
+
+    Args:
+        directory_path (str): Path to the directory.
+    """
+    
+    directory_path = str(directory_path)
+    for root, dirs, files in os.walk(directory_path):
+        # Calculate the depth of the current directory to format the output
+        depth = root.replace(directory_path, "").count(os.sep)
+        indent = " " * 4 * depth
+        print(f"{indent}{os.path.basename(root)}/")
+
+        # List directories
+        sub_indent = " " * 4 * (depth + 1)
+        for d in dirs:
+            print(f"{sub_indent}{d}/")
+
+        # List files
+        for f in files:
+            print(f"{sub_indent}{f}")

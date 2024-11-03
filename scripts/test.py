@@ -1,10 +1,12 @@
 import finetuning
-from finetuning.dataset import ImageNetDirectoryDataset
+from dino.datasets import ImageNetDirectoryDataset
+from dino.utils import list_directory_contents
+from dino import config
 from torch.utils.data import DataLoader
 from torchvision import transforms
 
+
 if __name__ == "__main__":
-    print(finetuning.__version__)
 
     # Define transforms
     transform = transforms.Compose(
@@ -15,9 +17,11 @@ if __name__ == "__main__":
         ]
     )
 
-    # Create the dataset and DataLoader
-    data_dir = "/input-data"
-    dataset = ImageNetDirectoryDataset(data_dir, transform=transform)
+    # print dataset dir
+    list_directory_contents(config.IMAGENET_DIR)
+
+    # # Create the dataset and DataLoader
+    dataset = ImageNetDirectoryDataset(config.IMAGENET_DIR, transform=transform, num_sample_classes=3)
     dataloader = DataLoader(dataset, batch_size=32, shuffle=True, num_workers=4)
 
     # Example: iterate over DataLoader

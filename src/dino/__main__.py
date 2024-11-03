@@ -6,15 +6,16 @@ import random
 
 import torch.nn as nn
 from torch.utils.data import DataLoader
+import torch
 
-from dino import datasets, utils
+from dino import datasets, utils, config
 from dino.finetuning import FinetuningMode, fine_tune
 from dino.models.model_heads import ModelType, load_model_with_head
 
 
 def train(args):
     print("Training model...")
-    # Add your training logic here
+    # TODO: Add your training logic here
 
 
 def add_train_subparser(subparsers):
@@ -25,25 +26,24 @@ def add_train_subparser(subparsers):
 
 
 def finetune(args):
-    print("Fine-tuning model...")
-    # Add your fine-tuning logic here
     seed = 42
     random.seed(seed)
     if args.dataset == "imagenet":
         dataset = datasets.ImageNetDirectoryDataset(
-            utils.IMAGENET_TINY_DIR,
+            # data_dir=config.IMAGENET_TINY_DIR,
+            data_dir=config.IMAGENET_DIR,
             transform=datasets.transform,
-            path_wnids=utils.IMAGENET_TINY_WORDS,
+            # path_wnids=config.IMAGENET_TINY_WORDS,
         )
     elif args.dataset == "imagenet-tiny":
         dataset = datasets.ImageNetDirectoryDataset(
-            utils.IMAGENET_TINY_DIR,
+            # data_dir=config.IMAGENET_TINY_DIR,
+            data_dir=config.IMAGENET_DIR,
             transform=datasets.transform,
-            path_wnids=utils.IMAGENET_TINY_WORDS,
+            # path_wnids=config.IMAGENET_TINY_WORDS,
             num_sample_classes=5,
         )
 
-    dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
     NUM_CLASSES = len(dataset.class_idx_to_wnid)
     NUM_SAMPLES = len(dataset)
     mode = FinetuningMode(args.mode)
@@ -67,17 +67,24 @@ def finetune(args):
         # TODO: Implement loading models from local files
 
     print(
-        f"Fine-tuning model...\n\tModel: {model_type}\n\tMode: {mode}\n"
-        f"\tDataset: {args.dataset}\n\tNum Epochs: {args.num_epochs}\n"
-        f"\tBatch Size: {args.batch_size}\n\tnum_samples: {NUM_SAMPLES}"
+        f"Fine-tuning model...\n"
+        f"\tModel: {model_type}\n"
+        f"\tMode: {mode}\n"
+        f"\tDataset: {args.dataset}\n"
+        f"\tNum Epochs: {args.num_epochs}\n"
+        f"\tBatch Size: {args.batch_size}\n"
+        f"\tnum_samples: {NUM_SAMPLES}"
     )
     criterion = nn.CrossEntropyLoss()
 
     # TODO: implement checkpointing
-    fine_tune(model, dataloader, criterion, mode=mode, num_epochs=args.num_epochs)
+    dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True,pin_memory=torch.cuda.is_available())
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    fine_tune(model, dataloader, criterion, mode=mode, num_epochs=args.num_epochs, device=device)
     model.save_head(args.model_name)
     print(f"Model saved to {utils.MODEL_DIR}/{args.model_name}")
 
+# TODO: add arg inputdata_path
 
 def add_finetune_subparser(subparsers):
     # Subcommand for fine-tuning
@@ -121,7 +128,7 @@ def add_finetune_subparser(subparsers):
 
 def evaluate(args):
     print("Evaluating model...")
-    # Add your evaluation logic here
+    # TODO: Add your evaluation logic here
 
 
 def add_evaluate_subparser(subparsers):
