@@ -1,2 +1,1 @@
 include src/dino/py.typed
-include src/finetuning/py.typed
