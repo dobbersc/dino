@@ -44,6 +44,9 @@ dev = [
     "ruff~=0.7.0",
 ]
 
+[project.scripts]
+dino = "dino.__main__:entry_point"
+
 [tool.black]
 line-length = 120
 target-version = ["py310"]
@@ -75,6 +78,9 @@ exclude_also = [
     '@(abc\.)?abstractmethod',
     'class .*\bProtocol\):',
 ]
+
+[tool.jupytext]
+formats = "ipynb,py:percent"
 
 [tool.ruff]
 target-version = "py310"
@@ -179,9 +185,3 @@ convention = "google"
 
 [tool.ruff.lint.isort]
 forced-separate = ["dino", "tests"]
-
-[tool.jupytext]
-formats = "ipynb,py:percent"
-
-[project.scripts]
-dino = "dino.__main__:entry_point"
