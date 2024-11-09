@@ -1,7 +1,6 @@
 from collections.abc import Callable, Sequence
 from typing import TypeAlias
 
-import torch
 from torch import Tensor, nn
 from torchvision.transforms import v2
 
@@ -35,20 +34,18 @@ class Augmenter(nn.Module):
             msg = "No transformation can be repeated a non-positive number of times."
             raise ValueError(msg)
 
-    def forward(self, image: Tensor) -> Tensor:
+    def forward(self, image: Tensor) -> list[Tensor]:
         """Applies the sequence of transformations to the input image the specified number of times.
 
         :param image: The input image. Shape: [#channels, height, width].
-        :return: The stacked transformed images. Shape: [#augmentations, #channels, height, width].
+        :return: A list containing the transformed images. Each of shape [#channels, modified_height, modified_width],
+            where the modified height and width can also vary per image.
         """
-        return torch.stack(
-            [
-                transform(image)
-                for transform, repeat in zip(self.transforms, self.repeats, strict=True)
-                for _ in range(repeat)
-            ],
-            dim=0,
-        )
+        return [
+            transform(image)
+            for transform, repeat in zip(self.transforms, self.repeats, strict=True)
+            for _ in range(repeat)
+        ]
 
 
 class DefaultLocalAugmenter(Augmenter):

@@ -1,6 +1,6 @@
 import os
 import random
-from collections.abc import Callable, Sized
+from collections.abc import Callable, Sized, Sequence
 from pathlib import Path
 from typing import NamedTuple
 
@@ -55,13 +55,10 @@ class ImageNetDirectoryDataset(Dataset):
             # smaple class_indices for the subset
             class_indices = random.sample(range(len(self.wnid_to_class_idx)), num_sample_classes)
             # filter samples for the subset
-            self.samples = [
-                s for s in self.samples if self.wnid_to_class_idx[s[1]] in class_indices
-            ]
+            self.samples = [s for s in self.samples if self.wnid_to_class_idx[s[1]] in class_indices]
             # update the mapping
             self.wnid_to_class_idx = {
-                wnid_name: class_idx
-                for class_idx, wnid_name in enumerate({s[1] for s in self.samples})
+                wnid_name: class_idx for class_idx, wnid_name in enumerate({s[1] for s in self.samples})
             }
 
         self.class_idx_to_wnid = {v: k for k, v in self.wnid_to_class_idx.items()}
@@ -103,9 +100,7 @@ transform = transforms.Compose(
     [
         transforms.Resize((224, 224)),  # Resize to 224x224 for ImageNet models
         transforms.ToTensor(),  # Convert to Tensor
-        transforms.Normalize(
-            mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
-        ),  # ImageNet normalization
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),  # ImageNet normalization
     ]
 )
 
@@ -119,14 +114,12 @@ def unnorm(img: torch.Tensor) -> torch.Tensor:
 
 
 class Augmentations(NamedTuple):
-    local_augmentations: Tensor
-    global_augmentations: Tensor
+    local_augmentations: list[Tensor]
+    global_augmentations: list[Tensor]
 
 
 class AugmentedDataset(Dataset[Augmentations], Sized):
-    def __init__(
-        self, dataset: Dataset[Tensor], local_augmenter: Augmenter, global_augmenter: Augmenter
-    ) -> None:
+    def __init__(self, dataset: Dataset[Tensor], local_augmenter: Augmenter, global_augmenter: Augmenter) -> None:
         if not isinstance(dataset, Sized):
             msg: str = "The provided dataset must implement the Sized interface, i.e. the '__len__' method."
             raise TypeError(msg)
