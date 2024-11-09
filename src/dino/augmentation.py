@@ -39,7 +39,7 @@ class Augmenter(nn.Module):
 
         :param image: The input image. Shape: [#channels, height, width].
         :return: A list containing the transformed images. Each of shape [#channels, modified_height, modified_width],
-            where the modified height and width can also vary per image.
+            where the modified height and width may also vary per image.
         """
         return [
             transform(image)

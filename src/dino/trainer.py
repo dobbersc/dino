@@ -6,7 +6,7 @@ from torch.optim import SGD, Optimizer
 from torch.utils.data import DataLoader, Dataset
 
 from dino.augmentation import Augmenter, DefaultGlobalAugmenter, DefaultLocalAugmenter
-from dino.data import Augmentations, AugmentedDataset
+from dino.datasets import Views, ViewDataset
 from dino.loss import DINOLoss, DistillationLoss
 from dino.utils.torch import get_module_device
 
@@ -23,9 +23,7 @@ class DINOTrainer:
         self.student = student
         self.teacher = teacher
 
-        # TODO: Add MLP head on top of student and teacher
-
-        self.augmented_dataset: AugmentedDataset = AugmentedDataset(
+        self.view_dataset: ViewDataset = ViewDataset(
             dataset,
             local_augmenter=DefaultLocalAugmenter() if local_augmenter is None else local_augmenter,
             global_augmenter=DefaultGlobalAugmenter() if global_augmenter is None else global_augmenter,
@@ -33,20 +31,18 @@ class DINOTrainer:
 
     def _train_epoch(
         self,
-        augmented_data_loader: DataLoader[Augmentations],
+        views_data_loader: DataLoader[Views],
         optimizer: Optimizer,
         loss_function: DistillationLoss,
         device: torch.device,
     ) -> None:
         self.student.train()
 
-        augmentations: Augmentations
-        for augmentations in augmented_data_loader:
-            # Move data to the model's device.
-            local_augmentations: Tensor = augmentations.local_augmentations.to(device)
-            global_augmentations: Tensor = augmentations.global_augmentations.to(device)
+        views: Views
+        for views in views_data_loader:
+            local_views: list[Tensor] = [local_view.to(device) for local_view in views.local_views]
+            global_views: list[Tensor] = [global_view.to(device) for global_view in views.global_views]
 
-            # Zero parameter gradients.
             optimizer.zero_grad()
 
             student_output: Tensor = self.student(torch.cat((global_augmentations, local_augmentations), dim=1))
@@ -81,8 +77,8 @@ class DINOTrainer:
         loss_function: DistillationLoss = loss_function_class(**(loss_function_kwargs or {})).to(device)
         optimizer: Optimizer = optimizer_class(self.student.parameters(), **(optimizer_kwargs or {}))
 
-        augmented_data_loader: DataLoader[Augmentations] = DataLoader(
-            self.augmented_dataset,
+        views_data_loader: DataLoader[Views] = DataLoader(
+            self.view_dataset,
             batch_size=batch_size,
             shuffle=True,
             drop_last=True,
@@ -92,4 +88,4 @@ class DINOTrainer:
 
         # TODO: Add logging
         for _ in range(1, max_epochs + 1):
-            self._train_epoch(augmented_data_loader, optimizer=optimizer, loss_function=loss_function, device=device)
+            self._train_epoch(views_data_loader, optimizer=optimizer, loss_function=loss_function, device=device)

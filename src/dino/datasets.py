@@ -113,12 +113,12 @@ def unnorm(img: torch.Tensor) -> torch.Tensor:
     return img.clamp(0, 1)
 
 
-class Augmentations(NamedTuple):
-    local_augmentations: list[Tensor]
-    global_augmentations: list[Tensor]
+class Views(NamedTuple):
+    local_views: list[Tensor]
+    global_views: list[Tensor]
 
 
-class AugmentedDataset(Dataset[Augmentations], Sized):
+class ViewDataset(Dataset[Views], Sized):
     def __init__(self, dataset: Dataset[Tensor], local_augmenter: Augmenter, global_augmenter: Augmenter) -> None:
         if not isinstance(dataset, Sized):
             msg: str = "The provided dataset must implement the Sized interface, i.e. the '__len__' method."
@@ -128,12 +128,9 @@ class AugmentedDataset(Dataset[Augmentations], Sized):
         self.local_augmenter = local_augmenter
         self.global_augmenter = global_augmenter
 
-    def __getitem__(self, index: int) -> Augmentations:
+    def __getitem__(self, index: int) -> Views:
         image: Tensor = self.dataset[index]
-        return Augmentations(
-            local_augmentations=self.local_augmenter(image),
-            global_augmentations=self.global_augmenter(image),
-        )
+        return Views(local_views=self.local_augmenter(image), global_views=self.global_augmenter(image))
 
     def __len__(self) -> int:
         return len(self.dataset)
