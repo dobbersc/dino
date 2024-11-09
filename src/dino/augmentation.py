@@ -16,8 +16,7 @@ class Augmenter(nn.Module):
 
         :param transforms: A single or multiple transforms to be applied to an image.
         :param repeats: The number of times to apply each transform.
-                        If an integer is specified, all transformations will be repeated the same number of times,
-                        defaults to 1.
+            If an integer is specified, all transformations will be repeated the same number of times. Defaults to 1.
         """
         super().__init__()
 
@@ -37,10 +36,10 @@ class Augmenter(nn.Module):
             raise ValueError(msg)
 
     def forward(self, image: Tensor) -> Tensor:
-        """Applies the list of transformations to the input image the specified number of times.
+        """Applies the sequence of transformations to the input image the specified number of times.
 
-        :param image: Input image.
-        :return: Stacked transformed images.
+        :param image: The input image. Shape: [#channels, height, width].
+        :return: The stacked transformed images. Shape: [#augmentations, #channels, height, width].
         """
         return torch.stack(
             [
@@ -53,14 +52,22 @@ class Augmenter(nn.Module):
 
 
 class DefaultLocalAugmenter(Augmenter):
-    def __init__(self, repeats: int = 8, size: int = 96, scale: tuple[float, float] = (0.05, 0.4)) -> None:
+    """Default Augmenter for local view augmentations of the DINO paper."""
+
+    def __init__(
+        self,
+        repeats: int = 8,
+        size: int | tuple[float, float] = 96,
+        scale: float | tuple[float, float] = (0.05, 0.4),
+    ) -> None:
         """Initializes an DefaultLocalAugmenter.
 
-        :param repeats: The number of times the local view transform will be applied, defaults to 8.
-        :param size: Size of the transformed image, defaults to 96.
-        :param scale: The area proportion of the original image to be included in the crop, defaults to (0.05, 0.4).
+        :param repeats: The number of times the local view transform will be applied. Defaults to 8.
+        :param size: The size (height and width) of the transformed image. Defaults to 96.
+        :param scale: Specifies the lower and upper bounds for the random area of the crop, before resizing.
+            The scale is defined with respect to the area of the original image. Defaults to (0.05, 0.4).
         """
-        local_view_transform = transforms.Compose(
+        local_view_transform: Transform = transforms.Compose(
             [
                 transforms.RandomResizedCrop(
                     size=size, scale=scale, interpolation=transforms.InterpolationMode.BICUBIC
@@ -71,7 +78,7 @@ class DefaultLocalAugmenter(Augmenter):
                 ),
                 transforms.RandomGrayscale(p=0.2),
                 transforms.RandomApply(transforms=[transforms.GaussianBlur(kernel_size=23, sigma=[0.1, 2.0])], p=0.5),
-                transforms.ToTensor(),
+                transforms.ToTensor(),  # TODO: Remove ToTensor?
                 transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
             ]
         )
@@ -79,11 +86,14 @@ class DefaultLocalAugmenter(Augmenter):
 
 
 class DefaultGlobalAugmenter(Augmenter):
-    def __init__(self, size: int = 224, scale: tuple[float, float] = (0.4, 1.0)) -> None:
+    """Default Augmenter for global view augmentations of the DINO paper."""
+
+    def __init__(self, size: int | tuple[float, float] = 224, scale: float | tuple[float, float] = (0.4, 1.0)) -> None:
         """Initializes an DefaultGlobalAugmenter.
 
-        :param size: Size of the transformed image, defaults to 224
-        :param scale: The area proportion of the original image to be included in the crop, defaults to (0.4, 1.0)
+        :param size: The size (height and width) of the transformed image. Defaults to 224.
+        :param scale: Specifies the lower and upper bounds for the random area of the crop, before resizing.
+            The scale is defined with respect to the area of the original image. Defaults to (0.4, 1.0).
         """
         global_view_base_transform = transforms.Compose(
             [
