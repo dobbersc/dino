@@ -1,3 +1,4 @@
+import itertools
 from typing import Any
 
 import torch
@@ -29,6 +30,32 @@ class DINOTrainer:
             global_augmenter=DefaultGlobalAugmenter() if global_augmenter is None else global_augmenter,
         )
 
+    @staticmethod
+    def _multi_forward(model: nn.Module, views: list[Tensor]) -> Tensor:
+        """Performs a forward pass separately for each consecutive group of view resolutions.
+
+        Since this function forwards each consecutive group of view resolutions,
+        the order of the model's outputs corresponding to inputs is preserved.
+
+        :param model: The model to forward the views through.
+        :param views: A list of image views. Each view at index `i` of shape:
+            [batch_size, #channels, height_i, width_i], where height_i and width_i may vary per view.
+        :return: The model's outputs for each view. Shape: [batch_size, #views, output_size]
+        """
+        if not views:
+            msg: str = "The 'views' list must contain at least one view for the forward pass."
+            raise ValueError(msg)
+
+        # Each output is of shape [batch_size * len(views_group), output_size]
+        outputs: list[Tensor] = [
+            model(torch.cat(tuple(views_group), dim=0))
+            for _, views_group in itertools.groupby(views, key=lambda view: view.size()[-2:])
+        ]
+
+        # Reshape outputs to [batch_size, #views, output_size]
+        batch_size: int = views[0].size(dim=0)
+        return torch.cat(outputs, dim=0).reshape(batch_size, len(views), -1)
+
     def _train_epoch(
         self,
         views_data_loader: DataLoader[Views],
@@ -45,10 +72,10 @@ class DINOTrainer:
 
             optimizer.zero_grad()
 
-            student_output: Tensor = self.student(torch.cat((global_augmentations, local_augmentations), dim=1))
+            student_output: Tensor = self._multi_forward(self.student, local_views + global_views)
             with torch.no_grad():
                 # TODO: Check if using no_grad is different to disabling gradients of the teacher model's parameters
-                teacher_output: Tensor = self.teacher(global_augmentations)
+                teacher_output: Tensor = self._multi_forward(self.teacher, global_views)
 
             loss: Tensor = loss_function(student_output, teacher_output)
 
