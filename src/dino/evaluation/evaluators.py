@@ -1,16 +1,16 @@
 from abc import ABC, abstractmethod
-from typing import TypeAlias
+from typing import Any, TypeAlias
 
 import numpy as np
 import torch
-from sklearn.metrics import accuracy_score
-from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import accuracy_score  # type: ignore[import-untyped]
+from sklearn.neighbors import KNeighborsClassifier  # type: ignore[import-untyped]
 from torch.utils.data import DataLoader
 
 
 class Evaluator(ABC):
     @abstractmethod
-    def evaluate(self, *args, **kwargs):
+    def evaluate(self, *args: Any, **kwargs: Any) -> Any:
         pass
 
 
