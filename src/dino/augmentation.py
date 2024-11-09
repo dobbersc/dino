@@ -3,7 +3,7 @@ from typing import TypeAlias
 
 import torch
 from torch import Tensor, nn
-from torchvision import transforms  # type: ignore[import-untyped]
+from torchvision.transforms import v2
 
 Transform: TypeAlias = Callable[[Tensor], Tensor]
 
@@ -67,20 +67,18 @@ class DefaultLocalAugmenter(Augmenter):
         :param scale: Specifies the lower and upper bounds for the random area of the crop, before resizing.
             The scale is defined with respect to the area of the original image. Defaults to (0.05, 0.4).
         """
-        local_view_transform: Transform = transforms.Compose(
+        local_view_transform: Transform = v2.Compose(
             [
-                transforms.RandomResizedCrop(
-                    size=size, scale=scale, interpolation=transforms.InterpolationMode.BICUBIC
+                v2.RandomResizedCrop(size=size, scale=scale, interpolation=v2.InterpolationMode.BICUBIC),
+                v2.RandomHorizontalFlip(p=0.5),
+                v2.RandomApply(
+                    transforms=[v2.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.2, hue=0.1)],
+                    p=0.8,
                 ),
-                transforms.RandomHorizontalFlip(p=0.5),
-                transforms.RandomApply(
-                    transforms=[transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.2, hue=0.1)], p=0.8
-                ),
-                transforms.RandomGrayscale(p=0.2),
-                transforms.RandomApply(transforms=[transforms.GaussianBlur(kernel_size=23, sigma=[0.1, 2.0])], p=0.5),
-                transforms.ToTensor(),  # TODO: Remove ToTensor?
-                transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
-            ]
+                v2.RandomGrayscale(p=0.2),
+                v2.RandomApply(transforms=[v2.GaussianBlur(kernel_size=23, sigma=[0.1, 2.0])], p=0.5),
+                v2.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+            ],
         )
         super().__init__(transforms=local_view_transform, repeats=repeats)
 
@@ -95,37 +93,31 @@ class DefaultGlobalAugmenter(Augmenter):
         :param scale: Specifies the lower and upper bounds for the random area of the crop, before resizing.
             The scale is defined with respect to the area of the original image. Defaults to (0.4, 1.0).
         """
-        global_view_base_transform = transforms.Compose(
+        global_view_base_transform: Transform = v2.Compose(
             [
-                transforms.RandomResizedCrop(
-                    size=size, scale=scale, interpolation=transforms.InterpolationMode.BICUBIC
+                v2.RandomResizedCrop(size=size, scale=scale, interpolation=v2.InterpolationMode.BICUBIC),
+                v2.RandomHorizontalFlip(p=0.5),
+                v2.RandomApply(
+                    transforms=[v2.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.2, hue=0.1)],
+                    p=0.8,
                 ),
-                transforms.RandomHorizontalFlip(p=0.5),
-                transforms.RandomApply(
-                    transforms=[transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.2, hue=0.1)], p=0.8
-                ),
-                transforms.RandomGrayscale(p=0.2),
-            ]
+                v2.RandomGrayscale(p=0.2),
+            ],
         )
 
-        normalize = transforms.Compose(
-            [
-                transforms.ToTensor(),
-                transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
-            ]
+        normalize: Transform = v2.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
+
+        first_global_view_transform: Transform = v2.Compose(
+            [global_view_base_transform, v2.GaussianBlur(kernel_size=23, sigma=[0.1, 2.0]), normalize],
         )
 
-        first_global_view_transform = transforms.Compose(
-            [global_view_base_transform, transforms.GaussianBlur(kernel_size=23, sigma=[0.1, 2.0]), normalize]
-        )
-
-        second_global_view_transform = transforms.Compose(
+        second_global_view_transform: Transform = v2.Compose(
             [
                 global_view_base_transform,
-                transforms.RandomApply(transforms=[transforms.GaussianBlur(kernel_size=23, sigma=[0.1, 2.0])], p=0.1),
-                transforms.RandomSolarize(threshold=128, p=0.2),
+                v2.RandomApply(transforms=[v2.GaussianBlur(kernel_size=23, sigma=[0.1, 2.0])], p=0.1),
+                v2.RandomSolarize(threshold=128, p=0.2),
                 normalize,
-            ]
+            ],
         )
 
         super().__init__(transforms=[first_global_view_transform, second_global_view_transform])
