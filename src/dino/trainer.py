@@ -69,6 +69,7 @@ class DINOTrainer:
         teacher_scheduler: Scheduler,
     ) -> None:
         self.student.train()
+        self.teacher.train()
 
         views: Views
         for views in views_data_loader:
