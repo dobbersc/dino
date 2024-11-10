@@ -7,8 +7,9 @@ from torch.optim import SGD, Optimizer
 from torch.utils.data import DataLoader, Dataset
 
 from dino.augmentation import Augmenter, DefaultGlobalAugmenter, DefaultLocalAugmenter
-from dino.datasets import Views, ViewDataset
+from dino.datasets import ViewDataset, Views
 from dino.loss import DINOLoss, DistillationLoss
+from dino.utils.schedulers import CosineScheduler, Scheduler
 from dino.utils.torch import get_module_device
 
 
@@ -62,6 +63,7 @@ class DINOTrainer:
         optimizer: Optimizer,
         loss_function: DistillationLoss,
         device: torch.device,
+        teacher_scheduler: Scheduler,
     ) -> None:
         self.student.train()
 
@@ -83,7 +85,15 @@ class DINOTrainer:
             optimizer.step()
 
             with torch.no_grad():
-                ...  # TODO: Update teacher parameters with EMA
+                momentum = teacher_scheduler.get_value()
+                teacher_parameters: dict[str, torch.Tensor] = dict(self.teacher.named_parameters())
+                student_parameters: dict[str, torch.Tensor] = dict(self.student.named_parameters())
+
+                for param in student_parameters:
+                    teacher_parameters[param].copy_(
+                        momentum * teacher_parameters[param] + (1 - momentum) * student_parameters[param],
+                    )
+                teacher_scheduler.step()
 
     def train(
         self,
@@ -93,6 +103,7 @@ class DINOTrainer:
         loss_function_kwargs: dict[str, Any] | None = None,
         optimizer_class: type[Optimizer] = SGD,
         optimizer_kwargs: dict[str, Any] | None = None,
+        teacher_network_momentum: tuple[float, float] = (0.996, 1.0),
         num_workers: int = 0,
         device: torch.device | None = None,
     ) -> None:
@@ -113,6 +124,14 @@ class DINOTrainer:
             pin_memory=True,
         )
 
+        teacher_scheduler: Scheduler = CosineScheduler(*teacher_network_momentum, max_epochs, len(views_data_loader))
+
         # TODO: Add logging
         for _ in range(1, max_epochs + 1):
-            self._train_epoch(views_data_loader, optimizer=optimizer, loss_function=loss_function, device=device)
+            self._train_epoch(
+                views_data_loader,
+                optimizer=optimizer,
+                loss_function=loss_function,
+                device=device,
+                teacher_scheduler=teacher_scheduler,
+            )
