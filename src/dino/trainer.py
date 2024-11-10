@@ -60,6 +60,28 @@ class DINOTrainer:
         batch_size: int = views[0].size(dim=0)
         return torch.cat(outputs, dim=0).reshape(batch_size, len(views), -1)
 
+    @torch.no_grad()
+    def _update_teacher(self, teacher_momentum_scheduler: Scheduler[float]) -> None:
+        """...
+
+        Note: Updates all parameters in the teacher that are also available in the student.
+
+        Args:
+            teacher_momentum_scheduler:
+
+        Returns:
+
+        """
+        momentum: float = teacher_momentum_scheduler.get_value()
+        teacher_parameters: dict[str, torch.Tensor] = dict(self.teacher.named_parameters())
+
+        for name, student_parameter in self.student.named_parameters():
+            teacher_parameters[name].copy_(
+                momentum * teacher_parameters[name] + (1 - momentum) * student_parameter,
+            )
+
+        teacher_momentum_scheduler.step()
+
     def _train_epoch(
         self,
         views_data_loader: DataLoader[Views],
@@ -80,7 +102,6 @@ class DINOTrainer:
 
             student_output: Tensor = self._multi_forward(self.student, local_views + global_views)
             with torch.no_grad():
-                # TODO: Check if using no_grad is different to disabling gradients of the teacher model's parameters
                 teacher_output: Tensor = self._multi_forward(self.teacher, global_views)
 
             loss: Tensor = loss_function(student_output, teacher_output)
@@ -88,16 +109,7 @@ class DINOTrainer:
             loss.backward()  # TODO: Gradient clipping?
             optimizer.step()
 
-            with torch.no_grad():
-                momentum = teacher_scheduler.get_value()
-                teacher_parameters: dict[str, torch.Tensor] = dict(self.teacher.named_parameters())
-                student_parameters: dict[str, torch.Tensor] = dict(self.student.named_parameters())
-
-                for param in student_parameters:
-                    teacher_parameters[param].copy_(
-                        momentum * teacher_parameters[param] + (1 - momentum) * student_parameters[param],
-                    )
-                teacher_scheduler.step()
+            self._update_teacher(teacher_momentum_scheduler)
 
     def train(
         self,
