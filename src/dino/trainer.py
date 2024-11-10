@@ -65,8 +65,8 @@ class DINOTrainer:
         views_data_loader: DataLoader[Views],
         optimizer: Optimizer,
         loss_function: DistillationLoss,
+        teacher_momentum_scheduler: Scheduler[float],
         device: torch.device,
-        teacher_scheduler: Scheduler,
     ) -> None:
         self.student.train()
         self.teacher.train()
@@ -128,7 +128,9 @@ class DINOTrainer:
             pin_memory=True,
         )
 
-        teacher_scheduler: Scheduler = CosineScheduler(*teacher_network_momentum, max_epochs, len(views_data_loader))
+        teacher_momentum_scheduler: CosineScheduler = CosineScheduler(
+            *teacher_network_momentum, max_epochs, len(views_data_loader)
+        )
 
         # TODO: Add logging
         for _ in range(1, max_epochs + 1):
@@ -136,6 +138,6 @@ class DINOTrainer:
                 views_data_loader,
                 optimizer=optimizer,
                 loss_function=loss_function,
+                teacher_momentum_scheduler=teacher_momentum_scheduler,
                 device=device,
-                teacher_scheduler=teacher_scheduler,
             )
