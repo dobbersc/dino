@@ -1,17 +1,16 @@
 import os
 import random
-from collections.abc import Callable, Sized, Sequence
+from collections.abc import Callable, Sized
 from pathlib import Path
 from typing import NamedTuple
 
 import PIL
 import torch
 from PIL.Image import Image
+from dino.augmentation import Augmenter
 from torch import Tensor
 from torch.utils.data import Dataset
 from torchvision import transforms
-
-from dino.augmentation import Augmenter
 
 
 class ImageNetDirectoryDataset(Dataset):
@@ -114,12 +113,23 @@ def unnorm(img: torch.Tensor) -> torch.Tensor:
 
 
 class Views(NamedTuple):
+    """Represents a list of local and global views of an image."""
+
     local_views: list[Tensor]
     global_views: list[Tensor]
 
 
 class ViewDataset(Dataset[Views], Sized):
+    """Wraps PyTorch Datasets, generating local and global views for each image in the original dataset."""
+
     def __init__(self, dataset: Dataset[Tensor], local_augmenter: Augmenter, global_augmenter: Augmenter) -> None:
+        """Initializes a ViewDataset.
+
+        Args:
+            dataset: The dataset containing the original images.
+            local_augmenter: The augmentation strategy to generate the local views.
+            global_augmenter: The augmentation strategy to generate the global views.
+        """
         if not isinstance(dataset, Sized):
             msg: str = "The provided dataset must implement the Sized interface, i.e. the '__len__' method."
             raise TypeError(msg)
