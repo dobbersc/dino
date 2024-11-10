@@ -1,21 +1,23 @@
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Generic, TypeVar
 
 import numpy as np
 
+T = TypeVar("T")
 
-class Scheduler(ABC):
-    """Abstrat class describing the functionalities of a scheduler."""
+
+class Scheduler(ABC, Generic[T]):
+    """Abstract class describing the functionalities of a scheduler."""
 
     @abstractmethod
-    def get_value(self) -> float:
+    def get_value(self) -> T:
         """Returns the current value according to the schedule.
 
         :return: Current value according to the schedule.
         """
 
     @abstractmethod
-    def step(self, *args: Any, **kwargs: Any) -> None:
+    def step(self) -> None:
         """Function called to inform the scheduler to take a step in the schedule."""
 
     @abstractmethod
@@ -23,7 +25,7 @@ class Scheduler(ABC):
         """Resets the schedule to the beginning."""
 
 
-class CosineScheduler(Scheduler):
+class CosineScheduler(Scheduler[float]):
     def __init__(self, initial: float, final: float, num_epochs: int, n_iters: int) -> None:
         """Initializes a CosineScheduler.
 
