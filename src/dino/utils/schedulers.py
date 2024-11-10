@@ -25,6 +25,20 @@ class Scheduler(ABC, Generic[T]):
         """Resets the schedule to the beginning."""
 
 
+class ConstantScheduler(Scheduler[T]):
+    def __init__(self, constant: T) -> None:
+        self.constant = constant
+
+    def get_value(self) -> T:
+        return self.constant
+
+    def step(self) -> None:
+        pass
+
+    def reset(self) -> None:
+        pass
+
+
 class CosineScheduler(Scheduler[float]):
     def __init__(self, initial: float, final: float, num_epochs: int, n_iters: int) -> None:
         """Initializes a CosineScheduler.
