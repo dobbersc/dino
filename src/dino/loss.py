@@ -4,6 +4,8 @@ from abc import ABC, abstractmethod
 import torch
 from torch import Tensor, nn
 
+from dino.utils.schedulers import ConstantScheduler, Scheduler
+
 
 class DistillationLoss(nn.Module, ABC):
     """Abstract base class for losses in knowledge distillation frameworks."""
@@ -11,7 +13,6 @@ class DistillationLoss(nn.Module, ABC):
     @abstractmethod
     def forward(self, student_output: Tensor, teacher_output: Tensor) -> Tensor:
         """Computes the distillation loss given the student and teacher model's outputs."""
-        pass
 
 
 class DINOLoss(DistillationLoss):
@@ -23,9 +24,9 @@ class DINOLoss(DistillationLoss):
     def __init__(
         self,
         output_size: int,
-        student_temperature: float = 0.1,
-        teacher_temperature: float = 0.04,  # TODO: Accept linear warm-up scheduler for temperatures
-        center_momentum: float = 0.9,
+        student_temperature: float | Scheduler[float] = 0.1,
+        teacher_temperature: float | Scheduler[float] = 0.04,
+        center_momentum: float | Scheduler[float] = 0.9,
     ) -> None:
         """Initializes a DINOLoss.
 
@@ -41,9 +42,15 @@ class DINOLoss(DistillationLoss):
         """
         super().__init__()
 
-        self.student_temperature = student_temperature
-        self.teacher_temperature = teacher_temperature
-        self.center_momentum = center_momentum
+        self.student_temperature = (
+            ConstantScheduler(student_temperature) if isinstance(student_temperature, float) else student_temperature
+        )
+        self.teacher_temperature = (
+            ConstantScheduler(teacher_temperature) if isinstance(teacher_temperature, float) else teacher_temperature
+        )
+        self.center_momentum = (
+            ConstantScheduler(center_momentum) if isinstance(center_momentum, float) else center_momentum
+        )
 
         self.center: Tensor
         self.register_buffer("center", torch.zeros(1, output_size))
@@ -57,8 +64,10 @@ class DINOLoss(DistillationLoss):
         Args:
             teacher_output: The teacher model's logits. Shape: [batch_size, #teacher_views, output_size].
         """
+        center_momentum: float = self.center_momentum.get_value()
+
         batch_center: Tensor = teacher_output.mean(dim=(0, 1)).unsqueeze(dim=0)
-        self.center = self.center * self.center_momentum + batch_center * (1 - self.center_momentum)
+        self.center = self.center * center_momentum + batch_center * (1 - center_momentum)
 
     def forward(self, student_output: Tensor, teacher_output: Tensor) -> Tensor:
         """Computes the DINO loss.
@@ -70,8 +79,11 @@ class DINOLoss(DistillationLoss):
         Returns:
             The averaged loss as a scalar tensor.
         """
-        student_log_probs: Tensor = (student_output / self.student_temperature).log_softmax(dim=-1)
-        teacher_probs: Tensor = ((teacher_output - self.center) / self.teacher_temperature).softmax(dim=-1).detach()
+        student_temperature: float = self.student_temperature.get_value()
+        teacher_temperature: float = self.teacher_temperature.get_value()
+
+        student_log_probs: Tensor = (student_output / student_temperature).log_softmax(dim=-1)
+        teacher_probs: Tensor = ((teacher_output - self.center) / teacher_temperature).softmax(dim=-1).detach()
 
         num_loss_terms: int = 0
         average_loss: Tensor = torch.tensor(0, dtype=student_output.dtype)
