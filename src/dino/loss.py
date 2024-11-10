@@ -6,12 +6,20 @@ from torch import Tensor, nn
 
 
 class DistillationLoss(nn.Module, ABC):
+    """Abstract base class for losses in knowledge distillation frameworks."""
+
     @abstractmethod
     def forward(self, student_output: Tensor, teacher_output: Tensor) -> Tensor:
+        """Computes the distillation loss given the student and teacher model's outputs."""
         pass
 
 
 class DINOLoss(DistillationLoss):
+    """Distillation loss specific to the DINO (Self-Distillation with No Labels) framework.
+
+    TODO: Briefly describe the loss.
+    """
+
     def __init__(
         self,
         output_size: int,
@@ -19,6 +27,18 @@ class DINOLoss(DistillationLoss):
         teacher_temperature: float = 0.04,  # TODO: Accept linear warm-up scheduler for temperatures
         center_momentum: float = 0.9,
     ) -> None:
+        """Initializes a DINOLoss.
+
+        Args:
+            output_size: The output size of the student and teacher model's logits
+                (shape: [batch_size, #views, output_size]).
+            student_temperature: The temperature for scaling the student's logits with a sharpened softmax.
+                Supports constant and scheduled temperatures. Defaults to 0.1.
+            teacher_temperature: The temperature for scaling the teacher's logits with a sharpened softmax.
+                Supports constant and scheduled temperatures. Default to 0.04.
+            center_momentum: The momentum for updating the moving average of teacher's logits centers.
+                Support constant and scheduled momentums. Default is 0.9.
+        """
         super().__init__()
 
         self.student_temperature = student_temperature
@@ -30,26 +50,25 @@ class DINOLoss(DistillationLoss):
 
     @torch.no_grad()
     def update_center(self, teacher_output: Tensor) -> None:
-        """TODO: Write docstring.
+        """Updates the center of the teacher model's logits.
+
+        The center is an exponential moving average of the mean teacher's logits across all batches.
 
         Args:
-            teacher_output: ... Shape: [batch_size, #student_views, output_size].
-
-        Returns:
-
+            teacher_output: The teacher model's logits. Shape: [batch_size, #teacher_views, output_size].
         """
         batch_center: Tensor = teacher_output.mean(dim=(0, 1)).unsqueeze(dim=0)
         self.center = self.center * self.center_momentum + batch_center * (1 - self.center_momentum)
 
     def forward(self, student_output: Tensor, teacher_output: Tensor) -> Tensor:
-        """TODO: Write docstring.
+        """Computes the DINO loss.
 
         Args:
-            student_output: ... Shape: [batch_size, #student_views, output_size].
-            teacher_output: ... Shape: [batch_size, #teacher_views, output_size].
+            student_output: The student model's logits. Shape: [batch_size, #student_views, output_size].
+            teacher_output: The teacher model's logits. Shape: [batch_size, #teacher_views, output_size].
 
         Returns:
-             The loss as a scalar tensor.
+            The averaged loss as a scalar tensor.
         """
         student_log_probs: Tensor = (student_output / self.student_temperature).log_softmax(dim=-1)
         teacher_probs: Tensor = ((teacher_output - self.center) / self.teacher_temperature).softmax(dim=-1).detach()
@@ -59,7 +78,6 @@ class DINOLoss(DistillationLoss):
 
         student_view_log_probs: Tensor  # Shape: [batch_size, output_size]
         teacher_view_probs: Tensor  # Shape: [batch_size, output_size]
-
         for (student_idx, student_view_log_probs), (teacher_idx, teacher_view_probs) in itertools.product(
             enumerate(student_log_probs.transpose(0, 1)),
             enumerate(teacher_probs.transpose(0, 1)),
