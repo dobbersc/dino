@@ -15,9 +15,10 @@ class Augmenter(nn.Module):
     def __init__(self, transforms: Transform | Sequence[Transform], repeats: int | Sequence[int] = 1) -> None:
         """Initializes an Augmenter.
 
-        :param transforms: A single or multiple transforms to be applied to an image.
-        :param repeats: The number of times to apply each transform.
-            If an integer is specified, all transformations will be repeated the same number of times. Defaults to 1.
+        Args:
+            transforms: A single or multiple transforms to be applied to an image.
+            repeats: The number of times to apply each transform. If an integer is specified,
+                all transformations will be repeated the same number of times. Defaults to 1.
         """
         super().__init__()
 
@@ -39,8 +40,11 @@ class Augmenter(nn.Module):
     def forward(self, image: Tensor) -> list[Tensor]:
         """Applies the sequence of transformations to the input image the specified number of times.
 
-        :param image: The input image. Shape: [#channels, height, width].
-        :return: A list containing the transformed images. Each of shape [#channels, modified_height, modified_width],
+        Args:
+            image: The input image. Shape: [#channels, height, width].
+
+        Returns:
+            A list containing the transformed images. Each of shape [#channels, modified_height, modified_width],
             where the modified height and width may also vary per image.
         """
         return [
@@ -61,10 +65,11 @@ class DefaultLocalAugmenter(Augmenter):
     ) -> None:
         """Initializes an DefaultLocalAugmenter.
 
-        :param repeats: The number of times the local view transform will be applied. Defaults to 8.
-        :param size: The size (height and width) of the transformed image. Defaults to 96.
-        :param scale: Specifies the lower and upper bounds for the random area of the crop, before resizing.
-            The scale is defined with respect to the area of the original image. Defaults to (0.05, 0.4).
+        Args:
+            repeats: The number of times the local view transform will be applied. Defaults to 8.
+            size: The size (height and width) of the transformed image. Defaults to 96.
+            scale: Specifies the lower and upper bounds for the random area of the crop, before resizing.
+                The scale is defined with respect to the area of the original image. Defaults to (0.05, 0.4).
         """
         local_view_transform: Transform = v2.Compose(
             [
@@ -89,9 +94,10 @@ class DefaultGlobalAugmenter(Augmenter):
     def __init__(self, size: int | tuple[float, float] = 224, scale: float | tuple[float, float] = (0.4, 1.0)) -> None:
         """Initializes an DefaultGlobalAugmenter.
 
-        :param size: The size (height and width) of the transformed image. Defaults to 224.
-        :param scale: Specifies the lower and upper bounds for the random area of the crop, before resizing.
-            The scale is defined with respect to the area of the original image. Defaults to (0.4, 1.0).
+        Args:
+            size: The size (height and width) of the transformed image. Defaults to 224.
+            scale: Specifies the lower and upper bounds for the random area of the crop, before resizing.
+                The scale is defined with respect to the area of the original image. Defaults to (0.4, 1.0).
         """
         global_view_base_transform: Transform = v2.Compose(
             [

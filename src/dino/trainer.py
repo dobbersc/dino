@@ -38,10 +38,13 @@ class DINOTrainer:
         Since this function forwards each consecutive group of view resolutions,
         the order of the model's outputs corresponding to inputs is preserved.
 
-        :param model: The model to forward the views through.
-        :param views: A list of image views. Each view at index `i` of shape:
-            [batch_size, #channels, height_i, width_i], where height_i and width_i may vary per view.
-        :return: The model's outputs for each view. Shape: [batch_size, #views, output_size]
+        Args:
+            model: The model to forward the views through.
+            views: A list of image views. Each view at index `i` of shape:
+                [batch_size, #channels, height_i, width_i], where height_i and width_i may vary per view.
+
+        Returns:
+            The model's outputs for each view. Shape: [batch_size, #views, output_size].
         """
         if not views:
             msg: str = "The 'views' list must contain at least one view for the forward pass."
