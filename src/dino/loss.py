@@ -14,6 +14,10 @@ class DistillationLoss(nn.Module, ABC):
     def forward(self, student_output: Tensor, teacher_output: Tensor) -> Tensor:
         """Computes the distillation loss given the student and teacher model's outputs."""
 
+    def step(self) -> None:
+        """Informs the internal schedulers to take a step in the schedule."""
+        pass
+
 
 class DINOLoss(DistillationLoss):
     """Distillation loss specific to the DINO (Self-Distillation with No Labels) framework.
@@ -105,3 +109,8 @@ class DINOLoss(DistillationLoss):
 
         self.update_center(teacher_output)
         return average_loss
+
+    def step(self) -> None:
+        self.student_temperature.step()
+        self.teacher_temperature.step()
+        self.center_momentum.step()

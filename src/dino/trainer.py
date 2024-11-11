@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader, Dataset
 from dino.augmentation import Augmenter, DefaultGlobalAugmenter, DefaultLocalAugmenter
 from dino.datasets import ViewDataset, Views
 from dino.loss import DINOLoss, DistillationLoss
-from dino.utils.schedulers import CosineScheduler, Scheduler
+from dino.utils.schedulers import CosineScheduler, Scheduler, ConstantScheduler
 from dino.utils.torch import get_module_device
 
 
@@ -105,9 +105,10 @@ class DINOTrainer:
                 teacher_output: Tensor = self._multi_forward(self.teacher, global_views)
 
             loss: Tensor = loss_function(student_output, teacher_output)
-
             loss.backward()  # TODO: Gradient clipping?
+
             optimizer.step()
+            loss_function.step()
 
             self._update_teacher(teacher_momentum_scheduler)
 
@@ -119,7 +120,7 @@ class DINOTrainer:
         loss_function_kwargs: dict[str, Any] | None = None,
         optimizer_class: type[Optimizer] = SGD,
         optimizer_kwargs: dict[str, Any] | None = None,
-        teacher_network_momentum: tuple[float, float] = (0.996, 1.0),
+        teacher_momentum: float | Scheduler[float] | None = None,
         num_workers: int = 0,
         device: torch.device | None = None,
     ) -> None:
@@ -127,9 +128,6 @@ class DINOTrainer:
 
         self.student.to(device)
         self.teacher.to(device)
-
-        loss_function: DistillationLoss = loss_function_class(**(loss_function_kwargs or {})).to(device)
-        optimizer: Optimizer = optimizer_class(self.student.parameters(), **(optimizer_kwargs or {}))
 
         views_data_loader: DataLoader[Views] = DataLoader(
             self.view_dataset,
@@ -140,9 +138,17 @@ class DINOTrainer:
             pin_memory=True,
         )
 
-        teacher_momentum_scheduler: CosineScheduler = CosineScheduler(
-            *teacher_network_momentum, max_epochs, len(views_data_loader)
-        )
+        if loss_function_class is DINOLoss:
+            loss_function_kwargs.setdefault("teacher_temperature", ConstantScheduler(0.04))  # TODO: Use right scheduler
+        loss_function: DistillationLoss = loss_function_class(**(loss_function_kwargs or {})).to(device)
+
+        optimizer: Optimizer = optimizer_class(self.student.parameters(), **(optimizer_kwargs or {}))
+
+        max_steps: int = max_epochs * len(views_data_loader)
+        if isinstance(teacher_momentum, float):
+            teacher_momentum = ConstantScheduler(teacher_momentum)
+        elif teacher_momentum is None:
+            teacher_momentum = CosineScheduler(max_steps=max_steps, initial=0.996, final=1.0)
 
         # TODO: Add logging
         for _ in range(1, max_epochs + 1):
@@ -150,6 +156,6 @@ class DINOTrainer:
                 views_data_loader,
                 optimizer=optimizer,
                 loss_function=loss_function,
-                teacher_momentum_scheduler=teacher_momentum_scheduler,
+                teacher_momentum_scheduler=teacher_momentum,
                 device=device,
             )
