@@ -1,7 +1,10 @@
 from abc import ABC, abstractmethod
-from typing import Generic, TypeVar
+from typing import TYPE_CHECKING, Generic, TypeVar
 
 import numpy as np
+
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
 
 T = TypeVar("T")
 
@@ -9,68 +12,70 @@ T = TypeVar("T")
 class Scheduler(ABC, Generic[T]):
     """Abstract class describing the functionalities of a scheduler."""
 
+    def __init__(self, max_steps: int | None) -> None:
+        """Initializes a Scheduler.
+
+        Args:
+            max_steps: The maximum number of steps supported by the scheduler.
+                If None, the scheduler has no step limit.
+        """
+        self._max_steps = max_steps
+        self._current_step: int = 0
+
     @abstractmethod
     def get_value(self) -> T:
-        """Returns the current value according to the schedule.
+        """Returns the current values according to the schedule."""
 
-        :return: Current value according to the schedule.
-        """
-
-    @abstractmethod
     def step(self) -> None:
-        """Function called to inform the scheduler to take a step in the schedule."""
+        """Informs the scheduler to take a step in the schedule."""
+        if self._max_steps is not None and self._current_step == self._max_steps:
+            msg: str = f"Exceeded the maximum number of steps ({self.max_steps}) supported by the scheduler."
+            raise RuntimeError(msg)
 
-    @abstractmethod
+        self._current_step += 1
+
     def reset(self) -> None:
         """Resets the schedule to the beginning."""
+        self._current_step = 0
+
+    @property
+    def max_steps(self) -> int | None:
+        return self._max_steps
+
+    @property
+    def current_step(self) -> int:
+        return self._current_step
 
 
 class ConstantScheduler(Scheduler[T]):
     def __init__(self, constant: T) -> None:
+        super().__init__(max_steps=None)
+
         self.constant = constant
 
     def get_value(self) -> T:
         return self.constant
 
-    def step(self) -> None:
-        pass
-
-    def reset(self) -> None:
-        pass
-
 
 class CosineScheduler(Scheduler[float]):
-    def __init__(self, initial: float, final: float, num_epochs: int, n_iters: int) -> None:
+    def __init__(self, max_steps: int, initial: float, final: float) -> None:
         """Initializes a CosineScheduler.
 
-        :param initial: Initial value of the schedule.
-        :param final: Final value of the schedule.
-        :param num_epochs: Number of epochs to calculate the total steps.
-        :param n_iters: Number of iterations per epoch to calculate the total steps.
+        Args:
+            max_steps: The maximum number of steps supported by the scheduler.
+            initial: The initial value of the schedule.
+            final: The final value of the schedule.
+                Note that the scheduler reaches the cosine interpolation's final value at step `max_steps - 1`.
         """
+        super().__init__(max_steps=max_steps)
+
         self.initial = initial
         self.final = final
-        self.current_step = 0
-        self.total_steps = (num_epochs * n_iters) - 1
 
     def get_value(self) -> float:
-        """Returns the current value according to a cosine schedule.
-
-        :return: Value according to a cosine schedule.
-        """
-        value: float = self.final + (self.initial - self.final) * 0.5 * (
-            1 + np.cos(np.pi * (self.current_step / self.total_steps))
+        assert self._max_steps is not None
+        t_max: int = self._max_steps - 1
+        offset: NDArray[np.float64] = (
+            0.5 * (self.initial - self.final) * (1 + np.cos(np.pi * (self._current_step / t_max)))
         )
-        return value
-
-    def reset(self) -> None:
-        """Resets the scheduler by setting the current step to 0."""
-        self.current_step = 0
-
-    def step(self) -> None:
-        """Increases the step counter of the scheduler.
-
-        If the step counter has reached the total number of steps, it cannot be increased any further.
-        """
-        if self.current_step < self.total_steps:
-            self.current_step += 1
+        return self.final + offset.item()
