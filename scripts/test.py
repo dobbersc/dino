@@ -32,9 +32,7 @@ if __name__ == "__main__":
         [
             transforms.Resize((224, 224)),  # Resize to 224x224 for ImageNet models
             transforms.ToTensor(),  # Convert to Tensor
-            transforms.Normalize(
-                mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
-            ),  # ImageNet normalization
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),  # ImageNet normalization
         ]
     )
 
@@ -42,9 +40,7 @@ if __name__ == "__main__":
     list_directory_contents(config.IMAGENET_DIR)
 
     # # Create the dataset and DataLoader
-    dataset = ImageNetDirectoryDataset(
-        config.IMAGENET_DIR, transform=transform, num_sample_classes=3
-    )
+    dataset = ImageNetDirectoryDataset(config.IMAGENET_DIR, transform=transform, num_sample_classes=3)
     dataloader = DataLoader(dataset, batch_size=32, shuffle=True, num_workers=4)
 
     # Example: iterate over DataLoader

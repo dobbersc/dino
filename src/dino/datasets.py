@@ -1,16 +1,24 @@
 import os
 import random
 from collections.abc import Callable, Sized
+from enum import Enum
 from pathlib import Path
 from typing import NamedTuple
 
 import PIL
 import torch
 from PIL.Image import Image
-from dino.augmentation import Augmenter
 from torch import Tensor
 from torch.utils.data import Dataset
 from torchvision import transforms
+
+from dino.augmentation import Augmenter
+
+
+class DatasetType(Enum):
+    MY_IMAGENET = "MyImagenet"
+    IMAGENET = "Imagenet"
+    CIPHER = "Cipher"
 
 
 class ImageNetDirectoryDataset(Dataset):
@@ -54,10 +62,13 @@ class ImageNetDirectoryDataset(Dataset):
             # smaple class_indices for the subset
             class_indices = random.sample(range(len(self.wnid_to_class_idx)), num_sample_classes)
             # filter samples for the subset
-            self.samples = [s for s in self.samples if self.wnid_to_class_idx[s[1]] in class_indices]
+            self.samples = [
+                s for s in self.samples if self.wnid_to_class_idx[s[1]] in class_indices
+            ]
             # update the mapping
             self.wnid_to_class_idx = {
-                wnid_name: class_idx for class_idx, wnid_name in enumerate({s[1] for s in self.samples})
+                wnid_name: class_idx
+                for class_idx, wnid_name in enumerate({s[1] for s in self.samples})
             }
 
         self.class_idx_to_wnid = {v: k for k, v in self.wnid_to_class_idx.items()}
@@ -95,11 +106,57 @@ class ImageNetDirectoryDataset(Dataset):
                 yield self.__getitem__(idx)[0]
 
 
-transform = transforms.Compose(
+class TransformType(Enum):
+    DEFAULT = "default"
+    LINEAR_VAL = "linear_val"
+    LINEAR_TRAIN = "linear_train"
+
+    @staticmethod
+    def get_transform(transform_type: "TransformType") -> Callable:
+        match transform_type:
+            case TransformType.DEFAULT:
+                return regular_transform
+            case TransformType.LINEAR_VAL:
+                return linear_val_transform
+            case TransformType.LINEAR_TRAIN:
+                return linear_train_transform
+            case _:
+                msg = f"Invalid transform type: {transform_type}"
+                raise ValueError(msg)
+
+
+regular_transform = transforms.Compose(
     [
         transforms.Resize((224, 224)),  # Resize to 224x224 for ImageNet models
         transforms.ToTensor(),  # Convert to Tensor
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),  # ImageNet normalization
+        transforms.Normalize(
+            mean=[0.485, 0.456, 0.406],
+            std=[0.229, 0.224, 0.225],
+        ),  # ImageNet normalization
+    ]
+)
+
+linear_val_transform = transforms.Compose(
+    [
+        transforms.Resize(256, interpolation=3),
+        transforms.CenterCrop(224),
+        transforms.ToTensor(),
+        transforms.Normalize(
+            (0.485, 0.456, 0.406),
+            (0.229, 0.224, 0.225),
+        ),
+    ]
+)
+
+linear_train_transform = transforms.Compose(
+    [
+        transforms.RandomResizedCrop(224),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        transforms.Normalize(
+            (0.485, 0.456, 0.406),
+            (0.229, 0.224, 0.225),
+        ),
     ]
 )
 
@@ -122,7 +179,9 @@ class Views(NamedTuple):
 class ViewDataset(Dataset[Views], Sized):
     """Wraps PyTorch Datasets, generating local and global views for each image in the original dataset."""
 
-    def __init__(self, dataset: Dataset[Tensor], local_augmenter: Augmenter, global_augmenter: Augmenter) -> None:
+    def __init__(
+        self, dataset: Dataset[Tensor], local_augmenter: Augmenter, global_augmenter: Augmenter
+    ) -> None:
         """Initializes a ViewDataset.
 
         Args:
@@ -140,7 +199,9 @@ class ViewDataset(Dataset[Views], Sized):
 
     def __getitem__(self, index: int) -> Views:
         image: Tensor = self.dataset[index]
-        return Views(local_views=self.local_augmenter(image), global_views=self.global_augmenter(image))
+        return Views(
+            local_views=self.local_augmenter(image), global_views=self.global_augmenter(image)
+        )
 
     def __len__(self) -> int:
         return len(self.dataset)
