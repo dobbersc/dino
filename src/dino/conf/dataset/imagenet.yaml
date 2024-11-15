@@ -1,0 +1,9 @@
+# conf/dataset/imagenet.yaml
+defaults:
+  - base_imagenet
+   
+type_: IMAGENET
+transform: DEFAULT
+data_dir: /imagenet-data
+num_sample_classes: 1000
+path_wnids: /imagenet-data/wnids.txt

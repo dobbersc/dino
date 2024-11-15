@@ -1,0 +1,5 @@
+defaults:
+  - base_head
+
+model_type: LINEAR
+num_classes: 1000

@@ -172,7 +172,7 @@ class VisionTransformer(nn.Module):
         self.num_features = self.embed_dim = embed_dim
 
         self.patch_embed = PatchEmbed(
-            img_size=img_size[0], patch_size=patch_size, in_chans=in_chans, embed_dim=embed_dim
+            img_size=img_size[0], patch_size=patch_size, in_chans=in_chans, embed_dim=embed_dim,
         )
         num_patches = self.patch_embed.num_patches
 
@@ -195,7 +195,7 @@ class VisionTransformer(nn.Module):
                     norm_layer=norm_layer,
                 )
                 for i in range(depth)
-            ]
+            ],
         )
         self.norm = norm_layer(embed_dim)
 

@@ -16,7 +16,6 @@ class DistillationLoss(nn.Module, ABC):
 
     def step(self) -> None:
         """Informs the internal schedulers to take a step in the schedule."""
-        pass
 
 
 class DINOLoss(DistillationLoss):

@@ -1,0 +1,13 @@
+defaults:
+  - base_finetune
+  - /dataset: imagenet
+  - /head: linear
+  - /backbone: vit_s
+
+base_lr: 0.001
+backbone_lr: 0.00001
+num_epochs: 1
+batch_size: 32
+mode: LINEAR_PROBE
+model_dir: /models
+model_tag: default
