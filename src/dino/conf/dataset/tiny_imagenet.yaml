@@ -5,5 +5,5 @@ defaults:
 type_: TINY_IMAGENET
 transform: DEFAULT
 data_dir: /Users/pvmeng/Documents/dino/data/tiny-imagenet-200/tiny-imagenet-200/train
-num_sample_classes: 4
+num_sample_classes: 5
 path_wnids: /Users/pvmeng/Documents/dino/data/tiny-imagenet-200/tiny-imagenet-200/words.txt

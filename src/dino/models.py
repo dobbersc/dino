@@ -2,18 +2,20 @@ from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
+import timm
 import torch
 from hydra.core.config_store import ConfigStore
 from torch import nn
 
-from dino.models.dino_vision_transformer import vit_small
 from dino.utils.torch import load_model, save_model
 
 
 class ModelType(Enum):
     VIT_DINO_S = "vit-dino-s"
-    # VIT = "vit"
-    # RESNET = "resnet" # Currently not supported TODO: implement
+    VIT_T = "vit-t"
+    VIT_S = "vit-s"
+    VIT_B = "vit-b"
+    RESNET_50 = "resnet-50"
 
 
 class HeadType(Enum):
@@ -25,13 +27,12 @@ class HeadType(Enum):
 class BackboneConfig:
     pretrained_weights: str | None
     model_type: ModelType
-    torchhub: tuple[str, str] | None
 
 
 @dataclass
 class HeadConfig:
     model_type: HeadType
-    num_classes: int | None
+    output_dim: int | None
 
 
 _cs = ConfigStore.instance()
@@ -50,43 +51,28 @@ _cs.store(
 class LinearHead(nn.Module):
     """A simple linear classification head (embeddings to number of classes)."""
 
-    def __init__(self, embed_dim: int, num_classes: int):
+    def __init__(self, embed_dim: int, output_dim: int):
         """Initializes the LinearHead module.
 
         Args:
             embed_dim (int): The dimension of the input embeddings.
-            num_classes (int): The number of output classes.
+            output_dim (int): The number of output classes.
         """
         super().__init__()
-        self.head = nn.Linear(embed_dim, num_classes)
+        self.head = nn.Linear(embed_dim, output_dim)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Performs a forward pass through the linear head.
-
-        Args:
-            x (torch.Tensor): Input tensor of shape (batch_size, embed_dim).
-
-        Returns:
-            torch.Tensor: Output logits of shape (batch_size, num_classes).
-        """
+        """Performs a forward pass through the linear head."""
         return self.head(x)
 
     @property
     def out_features(self) -> int:
-        """Returns the number of output features (i.e., the number of classes).
-
-        Returns:
-            int: The number of output features.
-        """
+        """Returns the number of output features (i.e., the number of classes)."""
         return self.head.out_features
 
     @property
     def in_features(self) -> int:
-        """Returns the number of input features (i.e., the embedding dimension).
-
-        Returns:
-            int: The number of input features.
-        """
+        """Returns the number of input features (i.e., the embedding dimension)."""
         return self.head.in_features
 
 
@@ -144,40 +130,34 @@ class DINOHead(nn.Module):
         self.last_layer.weight_g.data.fill_(1)
 
     def _init_weights(self, m: nn.Module):
-        """Initializes weights of the linear layers.
-
-        Args:
-            m (nn.Module): A module to be initialized if it is a linear layer.
-        """
+        """Initializes weights of the linear layers."""
         if isinstance(m, nn.Linear):
             nn.init.trunc_normal_(m.weight, std=0.02)
             if m.bias is not None:
                 nn.init.constant_(m.bias, 0)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Performs a forward pass through the DINOHead.
-
-        Args:
-            x (torch.Tensor): Input tensor of shape (batch_size, input_dim).
-
-        Returns:
-            torch.Tensor: Output tensor of shape (batch_size, output_dim).
-        """
+        """Performs a forward pass through the DINOHead."""
         x = self.mlp(x)
         x = self.norm(x)
         return self.last_layer(x)
+
+    @property
+    def out_features(self) -> int:
+        """Returns the number of output features (i.e., the number of classes)."""
+        return self.last_layer.out_features
+
+    @property
+    def in_features(self) -> int:
+        """Returns the number of input features (i.e., the embedding dimension)."""
+        return self.mlp[0].in_features
 
 
 class DINOHeadNormalized(DINOHead):
     """DINO head with weight normalization and frozen scaling parameter."""
 
     def __init__(self, *args, **kwargs):
-        """Initializes the DINOHeadNormalized module.
-
-        Args:
-            *args: Positional arguments passed to the base DINOHead class.
-            **kwargs: Keyword arguments passed to the base DINOHead class.
-        """
+        """Initializes the DINOHeadNormalized module."""
         super().__init__(*args, **kwargs)
         self.last_layer.weight_g.requires_grad = False
 
@@ -203,114 +183,79 @@ class ModelWithHead(nn.Module):
 
     @property
     def embed_dim(self) -> int:
-        """Returns the input dimension of the head (embedding dimension).
-
-        Returns:
-            int: The input dimension of the head.
-        """
+        """Returns the input dimension of the head (embedding dimension)."""
         return self.head.in_features
 
     @property
-    def num_classes(self) -> int:
-        """Returns the output dimension of the head (number of classes).
-
-        Returns:
-            int: The number of classes.
-        """
+    def output_dim(self) -> int:
+        """Returns the output dimension of the head (number of classes)."""
         return self.head.out_features
 
     def backbone_parameters(self):
-        """Returns the parameters of the backbone model.
-
-        Returns:
-            Iterator: An iterator over the backbone model parameters.
-        """
+        """Returns the parameters of the backbone model."""
         return self.model.parameters()
 
     def head_parameters(self):
-        """Returns the parameters of the head.
-
-        Returns:
-            Iterator: An iterator over the head parameters.
-        """
+        """Returns the parameters of the head."""
         return self.head.parameters()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Performs a forward pass through the backbone and head.
-
-        Args:
-            x (torch.Tensor): Input tensor.
-
-        Returns:
-            torch.Tensor: Output tensor after the head.
-        """
+        """Performs a forward pass through the backbone and head."""
         x = self.model(x)
         return self.head(x)
 
     def save_head(self, model_path: str | Path):
-        """Saves the head model to a file.
-
-        Args:
-            model_name (str): The filename to save the head model. Default is "head.pth".
-        """
+        """Saves the head model to a file."""
         save_model(self.head, model_path)
 
     def save_backbone(self, model_path: str | Path):
-        """Saves the backbone model to a file.
-
-        Args:
-            model_name (str): The filename to save the backbone model. Default is "backbone.pth".
-        """
+        """Saves the backbone model to a file."""
         save_model(self.model, model_path)
 
     def save(self, model_path: str | Path):
-        """Saves the entire model (backbone and head) to a file.
-
-        Args:
-            model_name (str): The filename to save the entire model. Default is "model.pth".
-        """
+        """Saves the entire model (backbone and head) to a file."""
         save_model(self, model_path)
 
 
 def load_model_with_head(
-    model_type: ModelType = ModelType.VIT_DINO_S,
-    head_type: HeadType = HeadType.LINEAR,
-    num_classes: int = 200,
-    head_weights: str | None = None,
-    backbone_weights: str | None = None,
-    backbone_torchhub: tuple[str, str] | None = None,
+    model_type: ModelType,
+    head_type: HeadType,
+    output_dim: int,
+    head_weights: str | Path | None = None,
+    backbone_weights: str | Path | None = None,
 ) -> ModelWithHead:
     backbone = _load_backbone(
         model_type,
-        backbone_weights=backbone_weights,
-        backbone_torchhub=backbone_torchhub,
+        weights=backbone_weights,
     )
     embed_dim = _get_embed_dim(model_type)
-    head = _load_head(head_type, embed_dim, num_classes, head_weights)
+    head = _load_head(head_type, embed_dim, output_dim, head_weights)
 
     return ModelWithHead(backbone, head)
 
 
 def _load_backbone(
     model_type: ModelType,
-    backbone_weights: str | None = None,
-    backbone_torchhub: tuple[str, str] | None = None,
+    weights: str | Path | None = None,
 ) -> nn.Module:
-    # TODO: implement multiple model types
-    if backbone_torchhub is not None:
-        model = torch.hub.load(*backbone_torchhub)
+    match model_type:
+        case ModelType.VIT_DINO_S:
+            model = torch.hub.load("facebookresearch/dino:main", "dino_vits8")
+        case ModelType.VIT_T:
+            model = timm.create_model("vit_tiny_patch16_224", pretrained=False)
+        case ModelType.VIT_S:
+            model = timm.create_model("vit_small_patch16_224", pretrained=False)
+        case ModelType.VIT_B:
+            model = timm.create_model("vit_base_patch16_224", pretrained=False)
+        case ModelType.RESNET_50:
+            model = timm.create_model("resnet50", pretrained=False)
+        case _:
+            msg = f"Model type {model_type} is not supported"
+            raise NotImplementedError(msg)
 
-    else:
-        match model_type:
-            case ModelType.VIT_DINO_S:
-                model = vit_small()
-            case _:
-                msg = f"Model type {model_type} is not supported"
-                raise NotImplementedError(msg)
-
-        if backbone_weights is not None:
-            state_dict = load_model(backbone_weights)
-            model.load_state_dict(state_dict)
+    if weights is not None:
+        state_dict = load_model(weights)
+        model.load_state_dict(state_dict)
 
     return model
 
@@ -318,20 +263,20 @@ def _load_backbone(
 def _load_head(
     head_type: HeadType,
     embed_dim: int,
-    num_classes: int,
-    head_weights: str | None = None,
+    output_dim: int,
+    weights: str | None = None,
 ) -> nn.Module:
     match head_type:
         case HeadType.LINEAR:
-            head = LinearHead(embed_dim, num_classes)
+            head = LinearHead(embed_dim, output_dim)
         case HeadType.MLP:
-            head = DINOHead(embed_dim, output_dim=num_classes)
+            head = DINOHead(embed_dim, output_dim=output_dim)
         case _:
             msg = f"Head type {head_type} is not supported"
             raise NotImplementedError(msg)
 
-    if head_weights is not None:
-        state_dict = load_model(head_weights)
+    if weights is not None:
+        state_dict = load_model(weights)
         head.load_state_dict(state_dict)
 
     return head
@@ -341,6 +286,14 @@ def _get_embed_dim(model_type: ModelType) -> int:
     match model_type:
         case ModelType.VIT_DINO_S:
             return 384
+        case ModelType.VIT_T:
+            return 192
+        case ModelType.VIT_S:
+            return 384
+        case ModelType.VIT_B:
+            return 768
+        case ModelType.RESNET_50:
+            return 2048
         case _:
             msg = f"Model type {model_type} is not supported"
             raise NotImplementedError(msg)

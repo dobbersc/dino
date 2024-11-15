@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from dino.datasets import DatasetConfig, get_dataset
-from dino.models.model_heads import BackboneConfig, HeadConfig, ModelWithHead, load_model_with_head
+from dino.models import BackboneConfig, HeadConfig, ModelWithHead, load_model_with_head
 from dino.utils.random import set_seed
 
 
@@ -183,9 +183,10 @@ def run_finetuning(cfg: FinetuningConfig) -> None:
 
     dataset = get_dataset(cfg.dataset)
 
+    print("len(dataset)", len(dataset))
     # check if dataset has attribute num_classes
-    num_classes: int = (
-        dataset.num_classes if hasattr(dataset, "num_classes") else cfg.head.num_classes  # type: ignore[assignment]
+    output_dim: int = (
+        dataset.num_classes if hasattr(dataset, "num_classes") else cfg.head.output_dim  # type: ignore[assignment]
     )
 
     # TODO: implement exact experimental setup as in the paper
@@ -193,8 +194,7 @@ def run_finetuning(cfg: FinetuningConfig) -> None:
     model = load_model_with_head(
         model_type=cfg.backbone.model_type,
         head_type=cfg.head.model_type,
-        backbone_torchhub=cfg.backbone.torchhub,
-        num_classes=num_classes,
+        output_dim=output_dim,
     )
 
     # TODO: implement checkpointing

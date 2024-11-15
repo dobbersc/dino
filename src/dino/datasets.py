@@ -107,15 +107,12 @@ def get_dataset(cfg: DatasetConfig) -> Dataset[tuple[Image | torch.Tensor, int]]
                 transform=get_transform(cfg.transform),
             )
         case DatasetType.TINY_IMAGENET:
-            if isinstance(cfg, ImageNetConfig):
-                return ImageNetDirectoryDataset(
-                    data_dir=cfg.data_dir,
-                    transform=get_transform(cfg.transform),
-                    path_wnids=cfg.path_wnids,
-                    num_sample_classes=cfg.num_sample_classes,
-                )
-            msg = f"Invalid config type: {cfg.type_}"
-            raise ValueError(msg)
+            return ImageNetDirectoryDataset(
+                data_dir=cfg.data_dir,
+                transform=get_transform(cfg.transform),
+                path_wnids=cfg.path_wnids,
+                num_sample_classes=cfg.num_sample_classes,
+            )
         case _:
             msg = f"Invalid dataset type: {cfg.type_}"
             raise ValueError(msg)
@@ -144,7 +141,6 @@ class ImageNetDirectoryDataset(Dataset[tuple[Image | torch.Tensor, int]]):
         samples_raw: list[tuple[Path, str]] = list(self.load_raw_samples(data_dir))
 
         self.wnid_to_class_idx = self.get_wnid_to_class_mapping(samples_raw)
-
         if num_sample_classes is not None:
             class_indices = random.sample(range(len(self.wnid_to_class_idx)), num_sample_classes)
             samples_raw = list(
@@ -200,7 +196,9 @@ class ImageNetDirectoryDataset(Dataset[tuple[Image | torch.Tensor, int]]):
         """Creates a mapping from wnid to class index."""
         return {
             wnid_name: class_idx
-            for class_idx, wnid_name in enumerate(wnid for _, wnid in raw_samples)
+            for class_idx, wnid_name in enumerate(
+                {wnid for _, wnid in raw_samples}
+            )  # it is important to use set here to avoid strange offsets and steps
         }
 
     def __len__(self) -> int:

@@ -38,3 +38,8 @@ def save_model(model, model_path: str | Path):
 
 def load_model(model_path: str | Path):
     return torch.load(model_path)
+
+
+def compare_models(model1: nn.Module, model2: nn.Module) -> bool:
+    """Checks if two PyTorch models have identical architectures based on state_dict keys."""
+    return list(model1.state_dict().keys()) == list(model2.state_dict().keys())

@@ -2,4 +2,4 @@ defaults:
   - base_head
 
 model_type: LINEAR
-num_classes: 1000
+output_dim: 1000
