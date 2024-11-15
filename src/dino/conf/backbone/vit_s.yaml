@@ -1,0 +1,6 @@
+defaults:
+  - base_backbone
+
+model_type: VIT_DINO_S
+torchhub: ["facebookresearch/dino:main", "dino_vits8"]
+pretrained_weights: null

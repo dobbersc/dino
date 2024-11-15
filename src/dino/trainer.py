@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader, Dataset
 from dino.augmentation import Augmenter, DefaultGlobalAugmenter, DefaultLocalAugmenter
 from dino.datasets import ViewDataset, Views
 from dino.loss import DINOLoss, DistillationLoss
-from dino.utils.schedulers import CosineScheduler, Scheduler, ConstantScheduler
+from dino.utils.schedulers import ConstantScheduler, CosineScheduler, Scheduler
 from dino.utils.torch import get_module_device
 
 

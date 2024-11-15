@@ -1,10 +1,50 @@
+from dataclasses import dataclass
 from enum import Enum
+from pathlib import Path
 
 import torch
+from hydra.core.config_store import ConfigStore
 from torch import nn
 
 from dino.models.dino_vision_transformer import vit_small
 from dino.utils.torch import load_model, save_model
+
+
+class ModelType(Enum):
+    VIT_DINO_S = "vit-dino-s"
+    # VIT = "vit"
+    # RESNET = "resnet" # Currently not supported TODO: implement
+
+
+class HeadType(Enum):
+    LINEAR = "linear"
+    MLP = "mlp"
+
+
+@dataclass
+class BackboneConfig:
+    pretrained_weights: str | None
+    model_type: ModelType
+    torchhub: tuple[str, str] | None
+
+
+@dataclass
+class HeadConfig:
+    model_type: HeadType
+    num_classes: int | None
+
+
+_cs = ConfigStore.instance()
+_cs.store(
+    group="head",
+    name="base_head",
+    node=HeadConfig,
+)
+_cs.store(
+    group="backbone",
+    name="base_backbone",
+    node=BackboneConfig,
+)
 
 
 class LinearHead(nn.Module):
@@ -207,40 +247,29 @@ class ModelWithHead(nn.Module):
         x = self.model(x)
         return self.head(x)
 
-    def save_head(self, model_name: str = "head.pth"):
+    def save_head(self, model_path: str | Path):
         """Saves the head model to a file.
 
         Args:
             model_name (str): The filename to save the head model. Default is "head.pth".
         """
-        save_model(self.head, model_name)
+        save_model(self.head, model_path)
 
-    def save_backbone(self, model_name: str = "backbone.pth"):
+    def save_backbone(self, model_path: str | Path):
         """Saves the backbone model to a file.
 
         Args:
             model_name (str): The filename to save the backbone model. Default is "backbone.pth".
         """
-        save_model(self.model, model_name)
+        save_model(self.model, model_path)
 
-    def save(self, model_name: str = "model.pth"):
+    def save(self, model_path: str | Path):
         """Saves the entire model (backbone and head) to a file.
 
         Args:
             model_name (str): The filename to save the entire model. Default is "model.pth".
         """
-        save_model(self, model_name)
-
-
-class ModelType(Enum):
-    VIT_DINO_S = "vit-dino-s"
-    # VIT = "vit"
-    # RESNET = "resnet" # Currently not supported TODO: implement
-
-
-class HeadType(Enum):
-    LINEAR = "linear"
-    MLP = "mlp"
+        save_model(self, model_path)
 
 
 def load_model_with_head(
@@ -251,7 +280,11 @@ def load_model_with_head(
     backbone_weights: str | None = None,
     backbone_torchhub: tuple[str, str] | None = None,
 ) -> ModelWithHead:
-    backbone = _load_backbone(model_type, backbone_weights=backbone_weights, backbone_torchhub=backbone_torchhub)
+    backbone = _load_backbone(
+        model_type,
+        backbone_weights=backbone_weights,
+        backbone_torchhub=backbone_torchhub,
+    )
     embed_dim = _get_embed_dim(model_type)
     head = _load_head(head_type, embed_dim, num_classes, head_weights)
 

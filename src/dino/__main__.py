@@ -1,58 +1,52 @@
 # my_package/__main__.py
 
-import argparse
 
-from finetuning import run_finetuning
-from hydra import compose, initialize
+from dataclasses import dataclass
+from enum import Enum
 
+import hydra
+from hydra.core.config_store import ConfigStore
+from omegaconf import MISSING, OmegaConf
 
-def train(args):
-    print("Training model...")
-    # TODO: Add your training logic here
-
-
-def add_train_subparser(subparsers):
-    # Subcommand for training
-    train_parser = subparsers.add_parser("train", help="Train the model.")
-    # train_parser.add_argument("--epochs", type=int, default=10, help="Number of epochs to train.")
-    # train_parser.add_argument("--batch-size", type=int, default=32, help="Batch size for training.")
+from dino.finetuning import FinetuningConfig, run_finetuning
 
 
-def evaluate(args):
-    print("Evaluating model...")
-    # TODO: Add your evaluation logic here
+class Command(Enum):
+    train = "train"
+    evaluate = "evaluate"
+    finetune = "finetune"
 
 
-def add_evaluate_subparser(subparsers):
-    # Subcommand for evaluation
-    evaluate_parser = subparsers.add_parser("evaluate", help="Evaluate the model.")
-    evaluate_parser.add_argument(
-        "--model-path", type=str, required=True, help="Path to the model to evaluate."
-    )
+@dataclass
+class DinoConfig:
+    cmd: Command = MISSING
+    finetune: FinetuningConfig = MISSING
+    verbose: bool = False
+    log_dir: str = MISSING
 
 
-def entry_point():
-    parser = argparse.ArgumentParser(description="Model management.")
-    subparsers = parser.add_subparsers(dest="command", required=True)
-    add_train_subparser(subparsers)
-    add_evaluate_subparser(subparsers)
+_cs = ConfigStore.instance()
+_cs.store(
+    name="base_dino",
+    node=DinoConfig,
+)
 
-    # Parse the arguments
-    args = parser.parse_args()
+
+@hydra.main(version_base=None, config_path="conf", config_name="config")
+def entry_point(cfg: DinoConfig) -> None:
+    print(OmegaConf.to_yaml(cfg))
 
     # Call the appropriate function based on the command
 
-    match args.command:
-        case "train":
-            train(args)
-        case "evaluate":
-            evaluate(args)
-        case "finetune":
-            with initialize(config_path="conf/finetune"):
-                cfg = compose(config_name="config")
-                run_finetuning(cfg)
-        case _:
-            print("Invalid command.")
+    match cfg.cmd:
+        case Command.train:
+            # train(cfg)
+            pass
+        case Command.evaluate:
+            # evaluate(cfg)
+            pass
+        case Command.finetune:
+            run_finetuning(cfg.finetune)
 
 
 if __name__ == "__main__":

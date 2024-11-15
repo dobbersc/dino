@@ -1,0 +1,7 @@
+defaults:
+  - base_dino
+  - finetune: standard
+  - _self_
+
+verbose: True
+log_dir: /logs

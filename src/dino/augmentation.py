@@ -1,10 +1,9 @@
 from collections.abc import Callable, Sequence
 from typing import TypeAlias
 
+import torch
 from torch import Tensor, nn
 from torchvision.transforms import v2
-
-import torch
 
 Transform: TypeAlias = Callable[[Tensor], Tensor]
 
@@ -115,7 +114,7 @@ class DefaultGlobalAugmenter(Augmenter):
             [
                 v2.ToDtype(torch.float32, scale=True),
                 v2.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
-            ]
+            ],
         )
 
         first_global_view_transform: Transform = v2.Compose(

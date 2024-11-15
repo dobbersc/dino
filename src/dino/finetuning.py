@@ -1,16 +1,19 @@
-import random
 from collections.abc import Callable
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
+from typing import Any
 
 import torch
-from omegaconf import OmegaConf
+from hydra.core.config_store import ConfigStore
+from omegaconf import MISSING, OmegaConf
 from torch import nn, optim
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from dino import config, datasets
-from dino.models.model_heads import ModelWithHead, load_model_with_head
+from dino.datasets import DatasetConfig, get_dataset
+from dino.models.model_heads import BackboneConfig, HeadConfig, ModelWithHead, load_model_with_head
+from dino.utils.random import set_seed
 
 
 class FinetuningMode(Enum):
@@ -23,6 +26,28 @@ class FinetuningMode(Enum):
 
     LINEAR_PROBE = "linear_probe"
     FULL_FINETUNE = "full_finetune"
+
+
+@dataclass
+class FinetuningConfig:
+    model_dir: str = "./models"
+    model_tag: str | None = None
+    base_lr: float = MISSING
+    backbone_lr: float = MISSING
+    num_epochs: int = MISSING
+    batch_size: int = MISSING
+    mode: FinetuningMode = MISSING
+    dataset: DatasetConfig = MISSING
+    backbone: BackboneConfig = MISSING
+    head: HeadConfig = MISSING
+
+
+_cs = ConfigStore.instance()
+_cs.store(
+    group="finetune",
+    name="base_finetune",
+    node=FinetuningConfig,
+)
 
 
 def get_optimizer(
@@ -42,7 +67,7 @@ def get_optimizer(
     Returns:
         optim.Optimizer: The initialized optimizer for training the model.
     """
-    optimizer_params = {
+    optimizer_params: dict[str, Any] = {
         "momentum": 0.9,  # Use the same configuration as in the paper
         "weight_decay": 0,
     }
@@ -78,11 +103,11 @@ def get_scheduler(optimizer: optim.Optimizer, n_epochs: int) -> optim.lr_schedul
 # TODO: maybe implement load from model checkpoint
 def train(
     model: nn.Module,
-    dataloader: DataLoader,
+    dataloader: DataLoader[Any],
     criterion: nn.Module,
     optimizer: optim.Optimizer,
-    device="cpu",
-):
+    device: torch.device,
+) -> dict[str, Any]:
     """Trains the model using the specified dataloader, criterion, and optimizer.
 
     Args:
@@ -112,14 +137,15 @@ def train(
 # Question: configurable optimizer or scheduler?
 def finetune(
     model: ModelWithHead,
-    dataloader: DataLoader,
+    dataloader: DataLoader[Any],
     criterion: nn.Module,
-    base_lr: float = 1e-3,
-    mode: FinetuningMode = FinetuningMode.LINEAR_PROBE,
-    num_epochs: int = 10,
-    device: str = "cpu",
-    validate: Callable[[nn.Module]] | None = None,
-):
+    base_lr: float,
+    backbone_lr: float,
+    mode: FinetuningMode,
+    num_epochs: int,
+    device: torch.device,
+    validate: Callable[[nn.Module], Any] | None = None,
+) -> None:
     """Performs finetuning on the model using the specified dataloader, criterion, and mode.
 
     Args:
@@ -134,36 +160,35 @@ def finetune(
     """
     if mode == FinetuningMode.LINEAR_PROBE:
         model.freeze_backbone()
-    optimizer = get_optimizer(model, base_lr, mode)
+    optimizer = get_optimizer(
+        model,
+        base_lr=base_lr,
+        backbone_lr=backbone_lr,
+        mode=mode,
+    )
     scheduler = get_scheduler(optimizer, num_epochs)
     for epoch in range(num_epochs):
-        train_stats = train(model, dataloader, criterion, optimizer, num_epochs, device=device)
+        train_stats = train(model, dataloader, criterion, optimizer, device=device)
         scheduler.step()
         if validate is not None:
             validate(model)
         print(f"Epoch [{epoch+1}/{num_epochs}] - Loss: {train_stats['loss']}")
 
 
-def run_finetuning(cfg: config.FinetuningConfig):
+def run_finetuning(cfg: FinetuningConfig) -> None:
     """Runs the finetuning process based on the specified configuration."""
-    seed = 42
-    random.seed(seed)
+    print(f"Fine-tuning model...\n{OmegaConf.to_yaml(cfg)}")
 
-    if cfg.dataset.type_ == datasets.DatasetType.MY_IMAGENET:
-        dataset = datasets.ImageNetDirectoryDataset(
-            data_dir=cfg.dataset.data_dir,
-            transform=cfg.dataset.transform,
-            path_wnids=cfg.dataset.path_wnids,
-            num_sample_classes=cfg.dataset.num_sample_classes,
-        )
-        num_classes = len(dataset.wnid_to_class_idx)
-    else:
-        msg = "Only MyImagenet dataset is supported for now"
-        raise NotImplementedError(msg)
+    set_seed(42)
 
-        # TODO: implement exact experimental setup as in the paper
+    dataset = get_dataset(cfg.dataset)
 
-    mode = FinetuningMode(cfg.mode)
+    # check if dataset has attribute num_classes
+    num_classes: int = (
+        dataset.num_classes if hasattr(dataset, "num_classes") else cfg.head.num_classes  # type: ignore[assignment]
+    )
+
+    # TODO: implement exact experimental setup as in the paper
 
     model = load_model_with_head(
         model_type=cfg.backbone.model_type,
@@ -171,8 +196,6 @@ def run_finetuning(cfg: config.FinetuningConfig):
         backbone_torchhub=cfg.backbone.torchhub,
         num_classes=num_classes,
     )
-
-    print(f"Fine-tuning model...\n{OmegaConf.to_yaml(cfg)}")
 
     # TODO: implement checkpointing
     dataloader = DataLoader(
@@ -185,6 +208,7 @@ def run_finetuning(cfg: config.FinetuningConfig):
     criterion = nn.CrossEntropyLoss()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device}")
 
     # TODO: implement validation
     validate = lambda _: None
@@ -192,13 +216,16 @@ def run_finetuning(cfg: config.FinetuningConfig):
         model,
         dataloader,
         criterion,
-        mode=mode,
+        mode=cfg.mode,
+        base_lr=cfg.base_lr,
+        backbone_lr=cfg.backbone_lr,
         num_epochs=cfg.num_epochs,
         device=device,
         validate=validate,
     )
 
-    model_path = Path(cfg.model_dir) / cfg.model_tag
+    model_tag = cfg.model_tag or "finetuned"
+    model_path = Path(cfg.model_dir) / model_tag
     model.save_head(model_path)
     # TODO implement proper logging
     print(f"Model saved to {model_path}")
