@@ -39,9 +39,9 @@ class DINOLoss(DistillationLoss):
             student_temperature: The temperature for scaling the student's logits with a sharpened softmax.
                 Supports constant and scheduled temperatures. Defaults to 0.1.
             teacher_temperature: The temperature for scaling the teacher's logits with a sharpened softmax.
-                Supports constant and scheduled temperatures. Default to 0.04.
+                Supports constant and scheduled temperatures. Defaults to 0.04.
             center_momentum: The momentum for updating the moving average of teacher's logits centers.
-                Support constant and scheduled momentums. Default is 0.9.
+                Support constant and scheduled momentums. Defaults to 0.9.
         """
         super().__init__()
 
@@ -65,7 +65,7 @@ class DINOLoss(DistillationLoss):
         The center is an exponential moving average of the mean teacher's logits across all batches.
 
         Args:
-            teacher_output: The teacher model's logits. Shape: [batch_size, #teacher_views, output_size].
+            teacher_output: The teacher model's logits. Shape: [batch_size, #global_views, output_size].
         """
         center_momentum: float = self.center_momentum.get_value()
 
@@ -76,8 +76,9 @@ class DINOLoss(DistillationLoss):
         """Computes the DINO loss.
 
         Args:
-            student_output: The student model's logits. Shape: [batch_size, #student_views, output_size].
-            teacher_output: The teacher model's logits. Shape: [batch_size, #teacher_views, output_size].
+            student_output: The student model's logits. Shape: [batch_size, #global_views + #local_views, output_size].
+                Must contain the global views as preceding elements to align with the teacher model's output.
+            teacher_output: The teacher model's logits. Shape: [batch_size, #global_views, output_size].
 
         Returns:
             The averaged loss as a scalar tensor.
@@ -98,6 +99,7 @@ class DINOLoss(DistillationLoss):
             enumerate(teacher_probs.transpose(0, 1)),
         ):
             if student_idx == teacher_idx:
+                # Skip loss calculation when the student and teacher operated on an identical view.
                 continue
 
             loss: Tensor = (-teacher_view_probs * student_view_log_probs).sum(dim=-1)  # Shape: [batch_size]

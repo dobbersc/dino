@@ -100,7 +100,7 @@ class DINOTrainer:
 
             optimizer.zero_grad()
 
-            student_output: Tensor = self._multi_forward(self.student, local_views + global_views)
+            student_output: Tensor = self._multi_forward(self.student, global_views + local_views)
             with torch.no_grad():
                 teacher_output: Tensor = self._multi_forward(self.teacher, global_views)
 
