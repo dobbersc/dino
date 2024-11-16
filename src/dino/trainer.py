@@ -160,9 +160,10 @@ class DINOTrainer:
             pin_memory=True,
         )
 
+        loss_function_kwargs = loss_function_kwargs or {}
         if loss_function_class is DINOLoss:
             loss_function_kwargs.setdefault("teacher_temperature", ConstantScheduler(0.04))  # TODO: Use right scheduler
-        loss_function: DistillationLoss = loss_function_class(**(loss_function_kwargs or {})).to(device)
+        loss_function: DistillationLoss = loss_function_class(**loss_function_kwargs).to(device)
 
         optimizer: Optimizer = optimizer_class(self.student.parameters(), **(optimizer_kwargs or {}))
 
