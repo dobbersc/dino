@@ -172,21 +172,26 @@ class DINOTrainer:
         elif teacher_momentum is None:
             teacher_momentum = CosineScheduler(max_steps=max_steps, initial=0.996, final=1.0)
 
-        for epoch in range(1, max_epochs + 1):
-            logger.info(LOG_SEPARATOR)
-            logger.info("EPOCH %d", epoch)
+        try:
+            for epoch in range(1, max_epochs + 1):
+                logger.info(LOG_SEPARATOR)
+                logger.info("EPOCH %d", epoch)
 
-            loss: float = self._train_epoch(
-                views_data_loader,
-                optimizer=optimizer,
-                loss_function=loss_function,
-                teacher_momentum_scheduler=teacher_momentum,
-                device=device,
-            )
+                loss: float = self._train_epoch(
+                    views_data_loader,
+                    optimizer=optimizer,
+                    loss_function=loss_function,
+                    teacher_momentum_scheduler=teacher_momentum,
+                    device=device,
+                )
 
+                logger.info(LOG_SEPARATOR)
+                logger.info("EPOCH %d DONE", epoch)
+                logger.info("Loss: %.8f", loss)
+
+        except KeyboardInterrupt:
             logger.info(LOG_SEPARATOR)
-            logger.info("EPOCH %d DONE", epoch)
-            logger.info("Loss: %.8f", loss)
+            logger.warning("Manually Interrupted Training!")
 
         logger.info(LOG_SEPARATOR)
         logger.info("Finished Training")
