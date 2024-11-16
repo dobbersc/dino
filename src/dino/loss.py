@@ -70,7 +70,7 @@ class DINOLoss(DistillationLoss):
         center_momentum: float = self.center_momentum.get_value()
 
         batch_center: Tensor = teacher_output.mean(dim=(0, 1)).unsqueeze(dim=0)
-        self.center = self.center * center_momentum + batch_center * (1 - center_momentum)
+        self.center = center_momentum * self.center + (1 - center_momentum) * batch_center
 
     def forward(self, student_output: Tensor, teacher_output: Tensor) -> Tensor:
         """Computes the DINO loss.
