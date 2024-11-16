@@ -90,7 +90,7 @@ class DINOLoss(DistillationLoss):
         teacher_probs: Tensor = ((teacher_output - self.center) / teacher_temperature).softmax(dim=-1).detach()
 
         num_loss_terms: int = 0
-        average_loss: Tensor = torch.tensor(0, dtype=student_output.dtype)
+        average_loss: Tensor = torch.tensor(0, dtype=student_output.dtype, device=teacher_probs.device)
 
         student_view_log_probs: Tensor  # Shape: [batch_size, output_size]
         teacher_view_probs: Tensor  # Shape: [batch_size, output_size]
