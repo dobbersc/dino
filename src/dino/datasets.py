@@ -4,7 +4,7 @@ from collections.abc import Callable, Generator, Sized
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import NamedTuple
+from typing import NamedTuple, TypeVar, Any
 
 import PIL
 import torch
@@ -17,6 +17,9 @@ from torchvision import transforms  # type: ignore
 from torchvision.datasets import CIFAR10, ImageFolder
 
 from dino.augmentation import Augmenter
+
+
+_T_co = TypeVar("_T_co", covariant=True)
 
 
 class DatasetType(Enum):
@@ -266,6 +269,28 @@ def unnorm(img: torch.Tensor) -> torch.Tensor:
     std = torch.tensor([0.229, 0.224, 0.225])
     img = img * std[:, None, None] + mean[:, None, None]  # Unnormalize
     return img.clamp(0, 1)
+
+
+class UnlabelledDataset(Dataset[_T_co], Sized):
+    """Wraps PyTorch Datasets of labelled data, removing the labels."""
+
+    def __init__(self, dataset: Dataset[tuple[_T_co, Any]]) -> None:
+        """Initializes an UnlabelledDataset.
+
+        Args:
+            dataset: The dataset containing the labelled data as tuples of data and their label.
+        """
+        if not isinstance(dataset, Sized):
+            msg: str = "The provided dataset must implement the Sized interface, i.e. the '__len__' method."
+            raise TypeError(msg)
+
+        self.dataset = dataset
+
+    def __getitem__(self, index: int) -> _T_co:
+        return self.dataset[index][0]
+
+    def __len__(self) -> int:
+        return len(self.dataset)
 
 
 class Views(NamedTuple):
