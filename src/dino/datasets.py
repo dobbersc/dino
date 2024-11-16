@@ -9,18 +9,20 @@ from typing import NamedTuple
 import PIL
 import torch
 from hydra.core.config_store import ConfigStore
+from omegaconf import MISSING
 from PIL.Image import Image
 from torch import Tensor
 from torch.utils.data import Dataset
 from torchvision import transforms  # type: ignore
+from torchvision.datasets import CIFAR10, ImageFolder
 
 from dino.augmentation import Augmenter
 
 
 class DatasetType(Enum):
-    TINY_IMAGENET = "TINY_IMAGENET"
-    IMAGENET = "IMAGENET"
-    CIPHER = "CIPHER"
+    CUSTOM_IMAGENET = "CUSTOM_IMAGENET"
+    IMAGE_FOLDER = "IMAGE_FOLDER"
+    CIFAR10 = "CIFAR10"
 
 
 class TransformType(Enum):
@@ -31,22 +33,27 @@ class TransformType(Enum):
 
 @dataclass
 class DatasetConfig:
-    type_: DatasetType
-    transform: TransformType
-    data_dir: str
+    type_: DatasetType = MISSING
+    transform: TransformType = MISSING
+    data_dir: str = MISSING
 
 
 @dataclass
-class ImageNetConfig(DatasetConfig):
-    num_sample_classes: int | None
-    path_wnids: str | None
+class CustomImageNetConfig(DatasetConfig):
+    num_sample_classes: int | None = None
+    path_wnids: str | None = None
 
 
 _cs = ConfigStore.instance()
 _cs.store(
     group="dataset",
-    name="base_imagenet",
-    node=ImageNetConfig,
+    name="base_dataset",
+    node=DatasetConfig,
+)
+_cs.store(
+    group="dataset",
+    name="base_custom_imagenet",
+    node=CustomImageNetConfig,
 )
 
 
@@ -100,19 +107,30 @@ def get_transform(transform_type: TransformType) -> Callable[[Image], torch.Tens
 
 
 def get_dataset(cfg: DatasetConfig) -> Dataset[tuple[Image | torch.Tensor, int]]:
+    """Returns the dataset based on the provided configuration."""
     match cfg.type_:
-        case DatasetType.IMAGENET:
-            return ImageNetDirectoryDataset(
-                data_dir=cfg.data_dir,
+        case DatasetType.IMAGE_FOLDER:
+            return ImageFolder(
+                root=cfg.data_dir,
                 transform=get_transform(cfg.transform),
             )
-        case DatasetType.TINY_IMAGENET:
+        case DatasetType.CUSTOM_IMAGENET:
             return ImageNetDirectoryDataset(
                 data_dir=cfg.data_dir,
                 transform=get_transform(cfg.transform),
                 path_wnids=cfg.path_wnids,
                 num_sample_classes=cfg.num_sample_classes,
             )
+        case DatasetType.CIFAR10:
+            return CIFAR10(
+                # just specify the data directory that contains
+                # 'cifar-10-batches-py' without the latter part
+                root=cfg.data_dir,
+                train=True,
+                transform=get_transform(cfg.transform),
+                download=False,
+            )
+            # maybe also get test dataset here (train=False) and concatenate them
         case _:
             msg = f"Invalid dataset type: {cfg.type_}"
             raise ValueError(msg)
@@ -197,7 +215,7 @@ class ImageNetDirectoryDataset(Dataset[tuple[Image | torch.Tensor, int]]):
         return {
             wnid_name: class_idx
             for class_idx, wnid_name in enumerate(
-                {wnid for _, wnid in raw_samples}
+                {wnid for _, wnid in raw_samples},
             )  # it is important to use set here to avoid strange offsets and steps
         }
 

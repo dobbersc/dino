@@ -1,9 +1,6 @@
-# conf/dataset/imagenet.yaml
 defaults:
-  - base_imagenet
+  - base_dataset
    
-type_: IMAGENET
+type_: IMAGE_FOLDER
 transform: DEFAULT
-data_dir: /imagenet-data
-num_sample_classes: 1000
-path_wnids: /imagenet-data/wnids.txt
+data_dir: ${hydra:runtime.cwd}/data/tiny-imagenet-200/train

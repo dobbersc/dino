@@ -5,6 +5,7 @@ from pathlib import Path
 import timm
 import torch
 from hydra.core.config_store import ConfigStore
+from omegaconf import MISSING
 from torch import nn
 
 from dino.utils.torch import load_model, save_model
@@ -25,14 +26,15 @@ class HeadType(Enum):
 
 @dataclass
 class BackboneConfig:
-    pretrained_weights: str | None
-    model_type: ModelType
+    model_type: ModelType = MISSING
+    pretrained_weights: str | None = None
 
 
 @dataclass
 class HeadConfig:
-    model_type: HeadType
-    output_dim: int | None
+    model_type: HeadType = MISSING
+    output_dim: int | None = MISSING
+    pretrained_weights: str | None = None
 
 
 _cs = ConfigStore.instance()
