@@ -1,4 +1,6 @@
 import itertools
+import logging
+import time
 from typing import Any
 
 import torch
@@ -6,11 +8,14 @@ from torch import Tensor, nn
 from torch.optim import SGD, Optimizer
 from torch.utils.data import DataLoader, Dataset
 
+from dino import LOG_SEPARATOR
 from dino.augmentation import Augmenter, DefaultGlobalAugmenter, DefaultLocalAugmenter
 from dino.datasets import ViewDataset, Views
 from dino.loss import DINOLoss, DistillationLoss
 from dino.utils.schedulers import ConstantScheduler, CosineScheduler, Scheduler
 from dino.utils.torch import get_module_device
+
+logger: logging.Logger = logging.getLogger(__name__)
 
 
 class DINOTrainer:
@@ -67,10 +72,10 @@ class DINOTrainer:
         Note: Updates all parameters in the teacher that are also available in the student.
 
         Args:
-            teacher_momentum_scheduler:
+            teacher_momentum_scheduler: ...
 
         Returns:
-
+            ...
         """
         momentum: float = teacher_momentum_scheduler.get_value()
         teacher_parameters: dict[str, torch.Tensor] = dict(self.teacher.named_parameters())
@@ -84,17 +89,20 @@ class DINOTrainer:
 
     def _train_epoch(
         self,
-        views_data_loader: DataLoader[Views],
+        data_loader: DataLoader[Views],
         optimizer: Optimizer,
         loss_function: DistillationLoss,
         teacher_momentum_scheduler: Scheduler[float],
         device: torch.device,
-    ) -> None:
+    ) -> float:
         self.student.train()
         self.teacher.train()
 
+        aggregated_loss: float = 0
+        start_time: float = time.time()
+
         views: Views
-        for views in views_data_loader:
+        for batch_index, views in enumerate(data_loader, start=1):
             local_views: list[Tensor] = [local_view.to(device) for local_view in views.local_views]
             global_views: list[Tensor] = [global_view.to(device) for global_view in views.global_views]
 
@@ -105,12 +113,26 @@ class DINOTrainer:
                 teacher_output: Tensor = self._multi_forward(self.teacher, global_views)
 
             loss: Tensor = loss_function(student_output, teacher_output)
-            loss.backward()  # TODO: Gradient clipping?
+            aggregated_loss += loss.item()
 
+            # Log intermediate results.
+            if batch_index % max(1, len(data_loader) // 10) == 0:
+                msg: str = (
+                    f"batch {batch_index}/{len(data_loader)}"
+                    f" - loss {aggregated_loss / batch_index:.8f}"
+                    f" - lr {optimizer.param_groups[0]['lr']:.8f}"
+                    f" - teacher momentum {teacher_momentum_scheduler.get_value():.8f}"
+                    f" - time {time.time() - start_time:.2f}s"
+                )
+                logger.info(msg)
+
+            loss.backward()  # TODO: Gradient clipping?
             optimizer.step()
             loss_function.step()
 
             self._update_teacher(teacher_momentum_scheduler)
+
+        return aggregated_loss / len(data_loader)
 
     def train(
         self,
@@ -150,12 +172,21 @@ class DINOTrainer:
         elif teacher_momentum is None:
             teacher_momentum = CosineScheduler(max_steps=max_steps, initial=0.996, final=1.0)
 
-        # TODO: Add logging
-        for _ in range(1, max_epochs + 1):
-            self._train_epoch(
+        for epoch in range(1, max_epochs + 1):
+            logger.info(LOG_SEPARATOR)
+            logger.info("EPOCH %d", epoch)
+
+            loss: float = self._train_epoch(
                 views_data_loader,
                 optimizer=optimizer,
                 loss_function=loss_function,
                 teacher_momentum_scheduler=teacher_momentum,
                 device=device,
             )
+
+            logger.info(LOG_SEPARATOR)
+            logger.info("EPOCH %d DONE", epoch)
+            logger.info("Loss: %.8f", loss)
+
+        logger.info(LOG_SEPARATOR)
+        logger.info("Finished Training")
