@@ -74,7 +74,7 @@ transform = transforms.Compose(
         transforms.Resize((224, 224)),  # Resize to 224x224 for ImageNet models
         transforms.ToTensor(),  # Convert to Tensor
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),  # ImageNet normalization
-    ]
+    ],
 )
 dataset = ImageNetDirectoryDataset(imagenet_path, transform=transform, path_wnids=wnid_path, num_sample_classes=5)
 
@@ -226,7 +226,7 @@ optimizer = optim.AdamW(
     [
         {"params": model.backbone_paramters(), "lr": base_lr * 0.1},
         {"params": model.head_parameters(), "lr": base_lr},
-    ]
+    ],
 )
 
 

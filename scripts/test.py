@@ -33,7 +33,7 @@ if __name__ == "__main__":
             transforms.Resize((224, 224)),  # Resize to 224x224 for ImageNet models
             transforms.ToTensor(),  # Convert to Tensor
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),  # ImageNet normalization
-        ]
+        ],
     )
 
     # print dataset dir

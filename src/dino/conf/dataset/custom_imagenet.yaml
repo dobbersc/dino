@@ -1,0 +1,9 @@
+# conf/dataset/imagenet.yaml
+defaults:
+  - base_custom_imagenet
+   
+type_: CUSTOM_IMAGENET
+transform: DEFAULT
+data_dir: ${hydra:runtime.cwd}/data/tiny-imagenet-200/train
+num_sample_classes: 5
+path_wnids: ${hydra:runtime.cwd}/data/tiny-imagenet-200/words.txt

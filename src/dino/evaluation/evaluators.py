@@ -28,7 +28,7 @@ class KNNEvaluator(Evaluator):
         self.model.eval()
         train_features, train_targets = self._extract_features(self.train_loader)
         eval_features, eval_targets = self._extract_features(self.eval_loader)
-        knn = KNeighborsClassifier(n_neighbors=k)
+        knn = KNeighborsClassifier(n_neighbors=k, weights="distance")
         knn.fit(train_features, train_targets)
         predictions = knn.predict(eval_features)
         return float(accuracy_score(eval_targets, predictions, normalize=True))

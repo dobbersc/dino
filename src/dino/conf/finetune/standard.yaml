@@ -1,6 +1,6 @@
 defaults:
   - base_finetune
-  - /dataset: tiny_imagenet
+  - /dataset: imagenet
   - /head: linear
   - /backbone: vit_dino_s
 
