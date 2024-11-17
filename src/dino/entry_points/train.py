@@ -1,6 +1,10 @@
+import logging
+import os
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import timm
+import torch
 from torch.optim import AdamW
 from torchvision.datasets import ImageFolder
 from torchvision.transforms import v2
@@ -16,18 +20,29 @@ if TYPE_CHECKING:
     from torch import Tensor
     from torch.utils.data import Dataset
 
+logger: logging.Logger = logging.getLogger(__name__)
+
 
 def train() -> None:
     set_seed(42)
 
     head_hidden_dim: int = 2028
-    head_output_dim: int = 1024
+    head_output_dim: int = 4096
     # dataset_dir: str = "/vol/tmp/dobbersc-pub/imagenette2/train" # noqa: ERA001
     dataset_dir: str = "/vol/tmp/dobbersc-pub/tiny-imagenet-200/train"
     batch_size: int = 128
 
-    student: VisionTransformer = timm.create_model("deit_small_patch16_224", num_classes=0, dynamic_img_size=True)
-    teacher: VisionTransformer = timm.create_model("deit_small_patch16_224", num_classes=0, dynamic_img_size=True)
+    pretrained: bool = False
+    model_name: str = "deit_small_patch16_224"
+
+    student: VisionTransformer = timm.create_model(
+        model_name, num_classes=0, dynamic_img_size=True, pretrained=pretrained
+    )
+    teacher: VisionTransformer = timm.create_model(
+        model_name, num_classes=0, dynamic_img_size=True, pretrained=pretrained
+    )
+
+    logger.info(f"{model_name=}; {pretrained=}")
 
     student_with_head: ModelWithHead = ModelWithHead(
         model=student,
@@ -55,3 +70,7 @@ def train() -> None:
         },
         num_workers=8,
     )
+
+    model_save_path: Path = Path.cwd() / "model.pt"
+    logger.info(f"Saving model to {model_save_path}")
+    torch.save(student_with_head.state_dict(), model_save_path)
