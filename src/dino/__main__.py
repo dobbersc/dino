@@ -1,6 +1,4 @@
 # my_package/__main__.py
-
-
 from dataclasses import dataclass
 from enum import Enum
 
@@ -8,6 +6,7 @@ import hydra
 from hydra.core.config_store import ConfigStore
 from omegaconf import MISSING, OmegaConf
 
+from dino.entry_points.train import train
 from dino.finetuning import FinetuningConfig, run_finetuning
 
 
@@ -40,10 +39,9 @@ def entry_point(cfg: DinoConfig) -> None:
 
     match cfg.cmd:
         case Command.train:
-            # train(cfg)
-            pass
+            train()
         case Command.evaluate:
-            # evaluate(cfg)
+            # evaluate(cfg) noqa: ERA001
             pass
         case Command.finetune:
             run_finetuning(cfg.finetune)
