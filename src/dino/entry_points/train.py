@@ -28,8 +28,8 @@ def train() -> None:
 
     head_hidden_dim: int = 2028
     head_output_dim: int = 4096
-    # dataset_dir: str = "/vol/tmp/dobbersc-pub/imagenette2/train" # noqa: ERA001
-    dataset_dir: str = "/vol/tmp/dobbersc-pub/tiny-imagenet-200/train"
+    dataset_dir: str = "/vol/tmp/dobbersc-pub/imagenette2/train"  # noqa: ERA001
+    # dataset_dir: str = "/vol/tmp/dobbersc-pub/tiny-imagenet-200/train"  # noqa: ERA001
     batch_size: int = 128
 
     pretrained: bool = False
@@ -42,7 +42,7 @@ def train() -> None:
         model_name, num_classes=0, dynamic_img_size=True, pretrained=pretrained
     )
 
-    logger.info(f"{model_name=}; {pretrained=}")
+    logger.info(f"{dataset_dir}; {model_name=}; {pretrained=}")
 
     student_with_head: ModelWithHead = ModelWithHead(
         model=student,
