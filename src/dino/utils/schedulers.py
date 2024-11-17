@@ -6,10 +6,10 @@ import numpy as np
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
-T = TypeVar("T")
+_T = TypeVar("_T")
 
 
-class Scheduler(ABC, Generic[T]):
+class Scheduler(ABC, Generic[_T]):
     """Abstract class describing the functionalities of a scheduler."""
 
     def __init__(self, max_steps: int | None) -> None:
@@ -23,7 +23,7 @@ class Scheduler(ABC, Generic[T]):
         self._current_step: int = 0
 
     @abstractmethod
-    def get_value(self) -> T:
+    def get_value(self) -> _T:
         """Returns the current values according to the schedule."""
 
     def step(self) -> None:
@@ -47,13 +47,13 @@ class Scheduler(ABC, Generic[T]):
         return self._current_step
 
 
-class ConstantScheduler(Scheduler[T]):
-    def __init__(self, constant: T) -> None:
+class ConstantScheduler(Scheduler[_T]):
+    def __init__(self, constant: _T) -> None:
         super().__init__(max_steps=None)
 
         self.constant = constant
 
-    def get_value(self) -> T:
+    def get_value(self) -> _T:
         return self.constant
 
 
