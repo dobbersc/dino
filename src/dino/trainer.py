@@ -37,6 +37,27 @@ class DINOTrainer:
             global_augmenter=DefaultGlobalAugmenter() if global_augmenter is None else global_augmenter,
         )
 
+    def _log_parameters(self, max_epochs: int, batch_size: int, num_workers: int, device: torch.device) -> None:
+        logger.info(LOG_SEPARATOR)
+        logger.info("Training Model")
+        logger.info(LOG_SEPARATOR)
+        logger.info(self.student)
+
+        # Log (hyper)parameters.
+        logger.info(LOG_SEPARATOR)
+        logger.info("Training Hyperparameters")
+        logger.info(" - max_epochs: %r", max_epochs)
+        logger.info(" - batch_size: %r", batch_size)
+
+        logger.info(LOG_SEPARATOR)
+        logger.info("Computational Parameters:")
+        logger.info(" - num_workers: %r", num_workers)
+        logger.info(" - device: %r", device)
+
+        logger.info(LOG_SEPARATOR)
+        logger.info("Dataset Information:")
+        logger.info(" - train: %d data points", len(self.view_dataset))
+
     @staticmethod
     def _multi_forward(model: nn.Module, views: list[Tensor]) -> Tensor:
         """Performs a forward pass separately for each consecutive group of view resolutions.
@@ -201,6 +222,14 @@ class DINOTrainer:
             teacher_momentum = ConstantScheduler(teacher_momentum)
         elif teacher_momentum is None:
             teacher_momentum = CosineScheduler(max_steps=max_steps, initial=0.996, final=1.0)
+
+        # TODO: Log remaining parameters.
+        self._log_parameters(
+            max_epochs=max_epochs,
+            batch_size=batch_size,
+            num_workers=num_workers,
+            device=device,
+        )
 
         try:
             # Train the model.
