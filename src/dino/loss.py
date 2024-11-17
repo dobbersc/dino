@@ -56,7 +56,7 @@ class DINOLoss(DistillationLoss):
         )
 
         self.center: Tensor
-        self.register_buffer("center", torch.zeros(1, output_size))
+        self.register_buffer("center", torch.zeros(output_size))
 
     @torch.no_grad()
     def update_center(self, teacher_output: Tensor) -> None:
@@ -69,7 +69,7 @@ class DINOLoss(DistillationLoss):
         """
         center_momentum: float = self.center_momentum.get_value()
 
-        batch_center: Tensor = teacher_output.mean(dim=(0, 1)).unsqueeze(dim=0)
+        batch_center: Tensor = teacher_output.mean(dim=(0, 1))
         self.center = center_momentum * self.center + (1 - center_momentum) * batch_center
 
     def forward(self, student_output: Tensor, teacher_output: Tensor) -> Tensor:
@@ -90,7 +90,7 @@ class DINOLoss(DistillationLoss):
         teacher_probs: Tensor = ((teacher_output - self.center) / teacher_temperature).softmax(dim=-1).detach()
 
         num_loss_terms: int = 0
-        average_loss: Tensor = torch.tensor(0, dtype=student_output.dtype, device=teacher_probs.device)
+        average_loss: Tensor = torch.tensor(0, dtype=student_output.dtype, device=student_output.device)
 
         student_view_log_probs: Tensor  # Shape: [batch_size, output_size]
         teacher_view_probs: Tensor  # Shape: [batch_size, output_size]
