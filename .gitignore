@@ -178,6 +178,6 @@ data/
 # Apptainer
 *.sif
 
-# output
+# Outputs
 output/
 outputs/
