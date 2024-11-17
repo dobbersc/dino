@@ -6,6 +6,7 @@ from typing import Any
 import torch
 from torch import Tensor, nn
 from torch.optim import SGD, Optimizer
+from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, LRScheduler, SequentialLR
 from torch.utils.data import DataLoader, Dataset
 
 from dino import LOG_SEPARATOR
@@ -92,7 +93,9 @@ class DINOTrainer:
         data_loader: DataLoader[Views],
         optimizer: Optimizer,
         loss_function: DistillationLoss,
+        lr_scheduler: LRScheduler,
         teacher_momentum_scheduler: Scheduler[float],
+        max_gradient_norm: float,
         device: torch.device,
     ) -> float:
         self.student.train()
@@ -126,8 +129,11 @@ class DINOTrainer:
                 )
                 logger.info(msg)
 
-            loss.backward()  # TODO: Gradient clipping?
+            loss.backward()
+            nn.utils.clip_grad_norm_(self.student.parameters(), max_norm=max_gradient_norm)
+
             optimizer.step()
+            lr_scheduler.step()
             loss_function.step()
 
             self._update_teacher(teacher_momentum_scheduler)
@@ -142,7 +148,10 @@ class DINOTrainer:
         loss_function_kwargs: dict[str, Any] | None = None,
         optimizer_class: type[Optimizer] = SGD,
         optimizer_kwargs: dict[str, Any] | None = None,
+        lr_scheduler_class: type[LRScheduler] | None = None,
+        lr_scheduler_kwargs: dict[str, Any] | None = None,
         teacher_momentum: float | Scheduler[float] | None = None,
+        max_gradient_norm: float = 3.0,
         num_workers: int = 0,
         device: torch.device | None = None,
     ) -> None:
@@ -151,7 +160,8 @@ class DINOTrainer:
         self.student.to(device)
         self.teacher.to(device)
 
-        views_data_loader: DataLoader[Views] = DataLoader(
+        # Initialize the data loader.
+        data_loader: DataLoader[Views] = DataLoader(
             self.view_dataset,
             batch_size=batch_size,
             shuffle=True,
@@ -159,30 +169,52 @@ class DINOTrainer:
             num_workers=num_workers,
             pin_memory=True,
         )
+        max_steps: int = max_epochs * len(data_loader)
 
+        # Initialize the loss function.
         loss_function_kwargs = loss_function_kwargs or {}
         if loss_function_class is DINOLoss:
             loss_function_kwargs.setdefault("teacher_temperature", ConstantScheduler(0.04))  # TODO: Use right scheduler
         loss_function: DistillationLoss = loss_function_class(**loss_function_kwargs).to(device)
 
+        # Initialize the optimizer.
         optimizer: Optimizer = optimizer_class(self.student.parameters(), **(optimizer_kwargs or {}))
 
-        max_steps: int = max_epochs * len(views_data_loader)
+        # Initialize the learning rate scheduler.
+        lr_scheduler: LRScheduler
+        if lr_scheduler_class is None:
+            # TODO: Make this properly configurable with parameters. This class and kwargs setup is not really nice.
+            milestone: int = 10 * len(data_loader)  # Set milestone to 10 epochs.
+            lr_scheduler = SequentialLR(
+                optimizer,
+                schedulers=[
+                    LinearLR(optimizer, start_factor=1e-6, total_iters=milestone),
+                    CosineAnnealingLR(optimizer, T_max=max_steps, eta_min=1e-6),
+                ],
+                milestones=[milestone],
+            )
+        else:
+            lr_scheduler = lr_scheduler_class(optimizer, **(lr_scheduler_kwargs or {}))
+
+        # Initialize the teacher momentum scheduler.
         if isinstance(teacher_momentum, float):
             teacher_momentum = ConstantScheduler(teacher_momentum)
         elif teacher_momentum is None:
             teacher_momentum = CosineScheduler(max_steps=max_steps, initial=0.996, final=1.0)
 
         try:
+            # Train the model.
             for epoch in range(1, max_epochs + 1):
                 logger.info(LOG_SEPARATOR)
                 logger.info("EPOCH %d", epoch)
 
                 loss: float = self._train_epoch(
-                    views_data_loader,
+                    data_loader,
                     optimizer=optimizer,
                     loss_function=loss_function,
+                    lr_scheduler=lr_scheduler,
                     teacher_momentum_scheduler=teacher_momentum,
+                    max_gradient_norm=max_gradient_norm,
                     device=device,
                 )
 
