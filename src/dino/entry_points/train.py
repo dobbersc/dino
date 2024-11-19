@@ -25,12 +25,12 @@ logger: logging.Logger = logging.getLogger(__name__)
 def train() -> None:
     set_seed(42)
 
-    head_hidden_dim: int = 2028
+    head_hidden_dim: int = 2048
     head_output_dim: int = 4096
-    # dataset_dir: str = "/vol/tmp/dobbersc-pub/imagenette2/train"  # noqa: ERA001
+    dataset_dir: str = "/vol/tmp/dobbersc-pub/imagenette2/train"  # noqa: ERA001
     # dataset_dir: str = "/vol/tmp/dobbersc-pub/tiny-imagenet-200/train"  # noqa: ERA001
     # dataset_dir: str = "/vol/tmp/dobbersc-pub/imagenet100/train"  # noqa: ERA001
-    dataset_dir: str = "/vol/tmp/dobbersc-pub/imagenet-kaggle/ILSVRC/Data/CLS-LOC/train"
+    # dataset_dir: str = "/vol/tmp/dobbersc-pub/imagenet-kaggle/ILSVRC/Data/CLS-LOC/train"  # noqa: ERA001
     batch_size: int = 128
 
     pretrained: bool = False
@@ -41,10 +41,16 @@ def train() -> None:
         teacher: ResNet = timm.create_model(model_name, num_classes=0, pretrained=pretrained)
     else:
         student: VisionTransformer = timm.create_model(
-            model_name, num_classes=0, dynamic_img_size=True, pretrained=pretrained,
+            model_name,
+            num_classes=0,
+            dynamic_img_size=True,
+            pretrained=pretrained,
         )
         teacher: VisionTransformer = timm.create_model(
-            model_name, num_classes=0, dynamic_img_size=True, pretrained=pretrained,
+            model_name,
+            num_classes=0,
+            dynamic_img_size=True,
+            pretrained=pretrained,
         )
 
     logger.info(f"{dataset_dir}; {model_name=}; {pretrained=}")
@@ -76,6 +82,10 @@ def train() -> None:
         num_workers=8,
     )
 
-    model_save_path: Path = Path.cwd() / "model.pt"
-    logger.info(f"Saving model to {model_save_path}")
-    torch.save(student_with_head.state_dict(), model_save_path)
+    student_save_path: Path = Path.cwd() / "student.pt"
+    logger.info(f"Saving model to {student_save_path}")
+    torch.save(student_with_head.state_dict(), student_save_path)
+
+    teacher_save_path: Path = Path.cwd() / "teacher.pt"
+    logger.info(f"Saving model to {teacher_save_path}")
+    torch.save(teacher_with_head.state_dict(), teacher_save_path)
