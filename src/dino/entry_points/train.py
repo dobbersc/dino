@@ -1,5 +1,4 @@
 import logging
-import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -16,7 +15,7 @@ from dino.utils.random import set_seed
 from dino.utils.torch import detect_device
 
 if TYPE_CHECKING:
-    from timm.models import VisionTransformer
+    from timm.models import ResNet, VisionTransformer
     from torch import Tensor
     from torch.utils.data import Dataset
 
@@ -28,19 +27,25 @@ def train() -> None:
 
     head_hidden_dim: int = 2028
     head_output_dim: int = 4096
-    dataset_dir: str = "/vol/tmp/dobbersc-pub/imagenette2/train"  # noqa: ERA001
+    # dataset_dir: str = "/vol/tmp/dobbersc-pub/imagenette2/train"  # noqa: ERA001
     # dataset_dir: str = "/vol/tmp/dobbersc-pub/tiny-imagenet-200/train"  # noqa: ERA001
+    # dataset_dir: str = "/vol/tmp/dobbersc-pub/imagenet100/train"  # noqa: ERA001
+    dataset_dir: str = "/vol/tmp/dobbersc-pub/imagenet-kaggle/ILSVRC/Data/CLS-LOC/train"
     batch_size: int = 128
 
     pretrained: bool = False
     model_name: str = "deit_small_patch16_224"
 
-    student: VisionTransformer = timm.create_model(
-        model_name, num_classes=0, dynamic_img_size=True, pretrained=pretrained
-    )
-    teacher: VisionTransformer = timm.create_model(
-        model_name, num_classes=0, dynamic_img_size=True, pretrained=pretrained
-    )
+    if "resnet" in model_name:
+        student: ResNet = timm.create_model(model_name, num_classes=0, pretrained=pretrained)
+        teacher: ResNet = timm.create_model(model_name, num_classes=0, pretrained=pretrained)
+    else:
+        student: VisionTransformer = timm.create_model(
+            model_name, num_classes=0, dynamic_img_size=True, pretrained=pretrained,
+        )
+        teacher: VisionTransformer = timm.create_model(
+            model_name, num_classes=0, dynamic_img_size=True, pretrained=pretrained,
+        )
 
     logger.info(f"{dataset_dir}; {model_name=}; {pretrained=}")
 
