@@ -121,12 +121,12 @@ class DINOHead(nn.Module):
                 ),
             )
             if i < n_layers - 1:
-                mlp_layers.append(nn.ReLU(inplace=True))
+                mlp_layers.append(nn.GELU())
 
         self.mlp = nn.Sequential(*mlp_layers)
-        self.norm = L2NormLayer()
 
         self.apply(self._init_weights)
+        self.norm = L2NormLayer()
 
         self.last_layer = nn.utils.weight_norm(nn.Linear(bottleneck_dim, output_dim, bias=False))
         self.last_layer.weight_g.data.fill_(1)
