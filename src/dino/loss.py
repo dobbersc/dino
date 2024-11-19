@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 
 import torch
 from torch import Tensor, nn
+from torch.distributions import Categorical
 
 from dino.utils.schedulers import ConstantScheduler, Scheduler
 
@@ -11,8 +12,26 @@ class DistillationLoss(nn.Module, ABC):
     """Abstract base class for losses in knowledge distillation frameworks."""
 
     @abstractmethod
-    def forward(self, student_output: Tensor, teacher_output: Tensor) -> Tensor:
-        """Computes the distillation loss given the student and teacher model's outputs."""
+    def forward(
+        self,
+        student_output: Tensor,
+        teacher_output: Tensor,
+        *,
+        compute_inspection_metrics: bool = False,
+    ) -> tuple[Tensor, dict[str, Tensor]]:
+        """Computes the distillation loss and optional inspection metrics given the student and teacher model's outputs.
+
+        Args:
+            student_output: The student model's logits.
+            teacher_output: The teacher model's logits.
+            compute_inspection_metrics: If true and the underlying function implements inspection metrics,
+                the inspection metrics dictionary will be populated.
+                Otherwise, the underlying function will omit the computation of these metrics. Defaults to false.
+
+        Returns:
+            A tuple of the distillation loss tensor and a dictionary of optional inspection metrics
+            with the metric names as keys and result tensors as values.
+        """
 
     def step(self) -> None:
         """Informs the internal schedulers to take a step in the schedule."""
@@ -72,22 +91,40 @@ class DINOLoss(DistillationLoss):
         batch_center: Tensor = teacher_output.mean(dim=(0, 1))
         self.center = center_momentum * self.center + (1 - center_momentum) * batch_center
 
-    def forward(self, student_output: Tensor, teacher_output: Tensor) -> Tensor:
+    def forward(
+        self,
+        student_output: Tensor,
+        teacher_output: Tensor,
+        *,
+        compute_inspection_metrics: bool = False,
+    ) -> tuple[Tensor, dict[str, Tensor]]:
         """Computes the DINO loss.
 
         Args:
             student_output: The student model's logits. Shape: [batch_size, #global_views + #local_views, output_size].
                 Must contain the global views as preceding elements to align with the teacher model's output.
             teacher_output: The teacher model's logits. Shape: [batch_size, #global_views, output_size].
+            compute_inspection_metrics: TODO
 
         Returns:
-            The averaged loss as a scalar tensor.
+            The averaged loss as a scalar tensor and the dictionary of inspection metrics.
         """
         student_temperature: float = self.student_temperature.get_value()
         teacher_temperature: float = self.teacher_temperature.get_value()
 
         student_log_probs: Tensor = (student_output / student_temperature).log_softmax(dim=-1)
         teacher_probs: Tensor = ((teacher_output - self.center) / teacher_temperature).softmax(dim=-1).detach()
+
+        inspection_metrics: dict[str, Tensor] = {}
+        if compute_inspection_metrics:
+            student_probs: Tensor = student_log_probs.exp()
+            inspection_metrics["student_entropy"] = Categorical(student_probs.flatten(end_dim=1)).entropy().mean()
+            inspection_metrics["teacher_entropy"] = Categorical(teacher_probs.flatten(end_dim=1)).entropy().mean()
+            inspection_metrics["kl_divergence"] = torch.tensor(
+                0,
+                dtype=student_output.dtype,
+                device=student_output.device,
+            )
 
         num_loss_terms: int = 0
         average_loss: Tensor = torch.tensor(0, dtype=student_output.dtype, device=student_output.device)
@@ -102,14 +139,27 @@ class DINOLoss(DistillationLoss):
                 # Skip loss calculation when the student and teacher operated on an identical view.
                 continue
 
+            # Compute Cross-Entropy loss.
             loss: Tensor = (-teacher_view_probs * student_view_log_probs).sum(dim=-1)  # Shape: [batch_size]
             average_loss += loss.mean()
             num_loss_terms += 1
 
+            if compute_inspection_metrics:
+                # Compute the KL Divergence.
+                kl_divergence: Tensor = nn.functional.kl_div(
+                    student_view_log_probs,
+                    teacher_view_probs,
+                    reduction="batchmean",
+                )
+                inspection_metrics["kl_divergence"] += kl_divergence
+
+        # Average the losses.
         average_loss /= num_loss_terms
+        if compute_inspection_metrics:
+            inspection_metrics["kl_divergence"] /= num_loss_terms
 
         self.update_center(teacher_output)
-        return average_loss
+        return average_loss, inspection_metrics
 
     def step(self) -> None:
         self.student_temperature.step()

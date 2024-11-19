@@ -1,6 +1,7 @@
 import itertools
 import logging
 import time
+from collections import defaultdict
 from typing import Any
 
 import torch
@@ -118,11 +119,12 @@ class DINOTrainer:
         teacher_momentum_scheduler: Scheduler[float],
         max_gradient_norm: float,
         device: torch.device,
-    ) -> float:
+    ) -> tuple[float, dict[str, float]]:
         self.student.train()
         self.teacher.train()
 
         aggregated_loss: float = 0
+        aggregated_inspection_metrics: defaultdict[str, float] = defaultdict(float)
         start_time: float = time.time()
 
         views: Views
@@ -136,16 +138,22 @@ class DINOTrainer:
             with torch.no_grad():
                 teacher_output: Tensor = self._multi_forward(self.teacher, global_views)
 
-            loss: Tensor = loss_function(student_output, teacher_output)
+            loss, inspection_metrics = loss_function(student_output, teacher_output, compute_inspection_metrics=True)
             aggregated_loss += loss.item()
+            for key, value in inspection_metrics.items():
+                aggregated_inspection_metrics[key] += value.item()
 
             # Log intermediate results.
             if batch_index % max(1, len(data_loader) // 10) == 0:
+                inspection_metrics_log: str = " ".join(
+                    f"- {key} {value / batch_index:.4f}" for key, value in aggregated_inspection_metrics.items()
+                )
                 msg: str = (
                     f"batch {batch_index}/{len(data_loader)}"
-                    f" - loss {aggregated_loss / batch_index:.8f}"
+                    f" - loss {aggregated_loss / batch_index:.4f}"
+                    f" {inspection_metrics_log}"
                     f" - lr {optimizer.param_groups[0]['lr']:.8f}"
-                    f" - teacher momentum {teacher_momentum_scheduler.get_value():.8f}"
+                    f" - teacher momentum {teacher_momentum_scheduler.get_value():.4f}"
                     f" - time {time.time() - start_time:.2f}s"
                 )
                 logger.info(msg)
@@ -159,7 +167,9 @@ class DINOTrainer:
 
             self._update_teacher(teacher_momentum_scheduler)
 
-        return aggregated_loss / len(data_loader)
+        for key in aggregated_inspection_metrics:
+            aggregated_inspection_metrics[key] /= len(data_loader)
+        return aggregated_loss / len(data_loader), aggregated_inspection_metrics
 
     def train(
         self,
@@ -237,7 +247,7 @@ class DINOTrainer:
                 logger.info(LOG_SEPARATOR)
                 logger.info("EPOCH %d", epoch)
 
-                loss: float = self._train_epoch(
+                loss, inspection_metrics = self._train_epoch(
                     data_loader,
                     optimizer=optimizer,
                     loss_function=loss_function,
@@ -250,6 +260,9 @@ class DINOTrainer:
                 logger.info(LOG_SEPARATOR)
                 logger.info("EPOCH %d DONE", epoch)
                 logger.info("Loss: %.8f", loss)
+                for key, value in inspection_metrics.items():
+                    name: str = "KL Divergence" if key == "kl_divergence" else key.replace("_", " ").title()
+                    logger.info("%s: %.8f", name, value)
 
         except KeyboardInterrupt:
             logger.info(LOG_SEPARATOR)
