@@ -104,7 +104,9 @@ class DINOLoss(DistillationLoss):
             student_output: The student model's logits. Shape: [batch_size, #global_views + #local_views, output_size].
                 Must contain the global views as preceding elements to align with the teacher model's output.
             teacher_output: The teacher model's logits. Shape: [batch_size, #global_views, output_size].
-            compute_inspection_metrics: TODO
+            compute_inspection_metrics: If true, the function will populate the inspection metrics dictionary with the
+                average entropy of the student and teacher probability distributions and their average KL Divergence.
+                Otherwise, the dictionary will remain empty. Defaults to false.
 
         Returns:
             The averaged loss as a scalar tensor and the dictionary of inspection metrics.
