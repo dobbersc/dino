@@ -1,0 +1,7 @@
+defaults:
+  - base_head
+  
+
+pretrained_weights: ${hydra:runtime.cwd}/models/default_head.pt
+model_type: LINEAR
+output_dim: 2

@@ -1,0 +1,9 @@
+defaults:
+  - base_evaluate
+  - /dataset: imagenet
+  - /backbone: vit_dino_s
+
+
+batch_size: 64
+mode: KNN
+k: 20

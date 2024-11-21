@@ -4,7 +4,7 @@ from collections.abc import Callable, Generator, Sized
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import NamedTuple, TypeVar, Any
+from typing import Any, NamedTuple, TypeVar
 
 import PIL
 import torch
@@ -12,12 +12,11 @@ from hydra.core.config_store import ConfigStore
 from omegaconf import MISSING
 from PIL.Image import Image
 from torch import Tensor
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, Subset
 from torchvision import transforms  # type: ignore
 from torchvision.datasets import CIFAR10, ImageFolder
 
 from dino.augmentation import Augmenter
-
 
 _T_co = TypeVar("_T_co", covariant=True)
 
@@ -39,6 +38,7 @@ class DatasetConfig:
     type_: DatasetType = MISSING
     transform: TransformType = MISSING
     data_dir: str = MISSING
+    train: bool = True
 
 
 @dataclass
@@ -113,23 +113,25 @@ def get_dataset(cfg: DatasetConfig) -> Dataset[tuple[Image | torch.Tensor, int]]
     """Returns the dataset based on the provided configuration."""
     match cfg.type_:
         case DatasetType.IMAGE_FOLDER:
-            return ImageFolder(
+            dataset = ImageFolder(
                 root=cfg.data_dir,
                 transform=get_transform(cfg.transform),
             )
+            return deterministic_train_val_split(dataset, train=cfg.train)
         case DatasetType.CUSTOM_IMAGENET:
             return ImageNetDirectoryDataset(
                 data_dir=cfg.data_dir,
                 transform=get_transform(cfg.transform),
                 path_wnids=cfg.path_wnids,
                 num_sample_classes=cfg.num_sample_classes,
+                train=cfg.train,
             )
         case DatasetType.CIFAR10:
             return CIFAR10(
                 # just specify the data directory that contains
                 # 'cifar-10-batches-py' without the latter part
                 root=cfg.data_dir,
-                train=True,
+                train=cfg.train,
                 transform=get_transform(cfg.transform),
                 download=False,
             )
@@ -137,6 +139,35 @@ def get_dataset(cfg: DatasetConfig) -> Dataset[tuple[Image | torch.Tensor, int]]
         case _:
             msg = f"Invalid dataset type: {cfg.type_}"
             raise ValueError(msg)
+
+
+def deterministic_train_val_split(
+    dataset: ImageFolder,
+    split_ratio: float = 0.9,
+    train: bool = True,
+):
+    """Splits a dataset deterministically into training and validation subsets.
+
+    Args:
+        dataset: The dataset to split.
+        split_ratio: Ratio for the training split. Default is 0.9.
+        train: If True, returns the training subset; otherwise returns the validation subset.
+
+    Returns:
+        A subset of the dataset (either training or validation).
+    """
+    # Deterministically sort the dataset by file path
+    sorted_indices = sorted(
+        range(len(dataset)),
+        key=lambda idx: dataset.samples[idx][0],
+    )
+
+    # Compute split indices
+    split_point = int(len(sorted_indices) * split_ratio)
+    if train:
+        return Subset(dataset, sorted_indices[:split_point])
+
+    return Subset(dataset, sorted_indices[split_point:])
 
 
 class ImageNetDirectoryDataset(Dataset[tuple[Image | torch.Tensor, int]]):
@@ -148,6 +179,8 @@ class ImageNetDirectoryDataset(Dataset[tuple[Image | torch.Tensor, int]]):
         transform: Callable[[Image], torch.Tensor] | None = None,
         path_wnids: str | Path | None = None,
         num_sample_classes: int | None = None,
+        train: bool = True,  # New flag for train/validation split
+        split_ratio: float = 0.9,  # Ratio for train split
     ):
         """Initializes an ImageNetDirectoryDataset.
 
@@ -156,6 +189,8 @@ class ImageNetDirectoryDataset(Dataset[tuple[Image | torch.Tensor, int]]):
             transform: The transform to apply to the images. Default is None.
             path_wnids: The path to the file containing the class to words mapping. Default is None.
             num_sample_classes: The number of classes to sample from the dataset. Default is None.
+            train: If True, use the training split, otherwise use validation split. Default is True.
+            split_ratio: The ratio of the dataset to use for training. Default is 0.9.
         """
         self.data_dir = data_dir
         self.transform = transform
@@ -170,6 +205,10 @@ class ImageNetDirectoryDataset(Dataset[tuple[Image | torch.Tensor, int]]):
             self.wnid_to_class_idx = self.get_wnid_to_class_mapping(samples_raw)
 
         self.class_idx_to_wnid = {v: k for k, v in self.wnid_to_class_idx.items()}
+
+        # Perform deterministic train/validation split
+        train_size = int(len(samples_raw) * split_ratio)
+        samples_raw = samples_raw[:train_size] if train else samples_raw[train_size:]
 
         self.samples = [(s[0], self.wnid_to_class_idx[s[1]]) for s in samples_raw]
 

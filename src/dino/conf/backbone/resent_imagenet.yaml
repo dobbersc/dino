@@ -1,0 +1,5 @@
+defaults:
+  - base_backbone
+
+model_type: RESNET_50
+pretrained_weights: ${hydra:runtime.cwd}/models/resent-student.pt

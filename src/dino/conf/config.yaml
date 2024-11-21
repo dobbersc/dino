@@ -1,6 +1,7 @@
 defaults:
   - base_dino
-  - finetune: standard
+  - finetune: default
+  - evaluate: knn
   - _self_
 
 verbose: True

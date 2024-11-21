@@ -1,0 +1,6 @@
+defaults:
+  - base_head
+
+model_type: MLP
+output_dim: 4096
+hidden_dim: 2048

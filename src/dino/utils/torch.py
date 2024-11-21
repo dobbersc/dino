@@ -1,7 +1,11 @@
+import logging
+
 from pathlib import Path
 
 import torch
 from torch import nn
+
+logger = logging.getLogger(__name__)
 
 
 def detect_device() -> torch.device:
@@ -25,15 +29,24 @@ def save_model(model, model_path: str | Path):
     model_path.parent.mkdir(parents=True, exist_ok=True)
 
     # check if it has a .pth extension
-    if model_path.suffix != ".pth":
-        model_path = model_path.with_suffix(".pth")
+    if model_path.suffix != ".pt":
+        model_path = model_path.with_suffix(".pt")
 
-    # check if the model file exists
-    if model_path.exists():
+    # check if the model file exists and create a new name
+    while model_path.exists():
+        parts = model_path.stem.split("_")
+        if len(parts) > 1 and parts[-1].isdigit():
+            parts[-1] = str(int(parts[-1]) + 1)
+        else:
+            parts.append("1")
+
+        new_name = "_".join(parts)
         # create a new file name
-        model_path = model_path.with_name(model_path.stem + "_new" + model_path.suffix)
+        model_path = model_path.with_name(new_name + model_path.suffix)
 
     torch.save(model.state_dict(), model_path)
+    msg = f"Model saved to {model_path}"
+    logger.info(msg)
 
 
 def load_model(model_path: str | Path):

@@ -16,6 +16,7 @@ class ModelType(Enum):
     VIT_T = "vit-t"
     VIT_S = "vit-s"
     VIT_B = "vit-b"
+    DEIT_S = "deit-s"
     RESNET_50 = "resnet-50"
 
 
@@ -35,6 +36,7 @@ class HeadConfig:
     model_type: HeadType = MISSING
     output_dim: int | None = MISSING
     pretrained_weights: str | None = None
+    hidden_dim: int = 2048
 
 
 _cs = ConfigStore.instance()
@@ -224,19 +226,20 @@ def load_model_with_head(
     head_type: HeadType,
     output_dim: int,
     head_weights: str | Path | None = None,
+    hidden_dim: int = 2048,
     backbone_weights: str | Path | None = None,
 ) -> ModelWithHead:
-    backbone = _load_backbone(
+    backbone = load_backbone(
         model_type,
         weights=backbone_weights,
     )
     embed_dim = _get_embed_dim(model_type)
-    head = _load_head(head_type, embed_dim, output_dim, head_weights)
+    head = _load_head(head_type, embed_dim, output_dim, head_weights, hidden_dim)
 
     return ModelWithHead(backbone, head)
 
 
-def _load_backbone(
+def load_backbone(
     model_type: ModelType,
     weights: str | Path | None = None,
 ) -> nn.Module:
@@ -249,6 +252,13 @@ def _load_backbone(
             model = timm.create_model("vit_small_patch16_224", pretrained=False)
         case ModelType.VIT_B:
             model = timm.create_model("vit_base_patch16_224", pretrained=False)
+        case ModelType.DEIT_S:
+            model = timm.create_model(
+                "deit_small_patch16_224",
+                num_classes=0,
+                dynamic_img_size=True,
+                pretrained=False,
+            )
         case ModelType.RESNET_50:
             model = timm.create_model("resnet50", pretrained=False)
         case _:
@@ -267,12 +277,13 @@ def _load_head(
     embed_dim: int,
     output_dim: int,
     weights: str | None = None,
+    hidden_dim: int = 2048,
 ) -> nn.Module:
     match head_type:
         case HeadType.LINEAR:
             head = LinearHead(embed_dim, output_dim)
         case HeadType.MLP:
-            head = DINOHead(embed_dim, output_dim=output_dim)
+            head = DINOHead(embed_dim, output_dim=output_dim, hidden_dim=hidden_dim)
         case _:
             msg = f"Head type {head_type} is not supported"
             raise NotImplementedError(msg)
@@ -294,6 +305,8 @@ def _get_embed_dim(model_type: ModelType) -> int:
             return 384
         case ModelType.VIT_B:
             return 768
+        case ModelType.DEIT_S:
+            return 384
         case ModelType.RESNET_50:
             return 2048
         case _:

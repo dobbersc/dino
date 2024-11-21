@@ -1,0 +1,10 @@
+defaults:
+  - base_evaluate
+  - /dataset: imagenet
+  - /backbone: vit_dino_s
+  - /head: linear_pretrained_custom
+
+
+batch_size: 16
+mode: LINEAR
+topk: [1, 5]

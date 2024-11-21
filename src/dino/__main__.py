@@ -1,4 +1,4 @@
-# my_package/__main__.py
+import logging
 from dataclasses import dataclass
 from enum import Enum
 
@@ -6,8 +6,11 @@ import hydra
 from hydra.core.config_store import ConfigStore
 from omegaconf import MISSING, OmegaConf
 
+from dino.entry_points.evaluation import EvaluatorConfig, run_evaluation
 from dino.entry_points.train import train
 from dino.finetuning import FinetuningConfig, run_finetuning
+
+logger: logging.Logger = logging.getLogger(__name__)
 
 
 class Command(Enum):
@@ -20,6 +23,7 @@ class Command(Enum):
 class DinoConfig:
     cmd: Command = MISSING
     finetune: FinetuningConfig = MISSING
+    evaluate: EvaluatorConfig = MISSING
     verbose: bool = False
     log_dir: str = MISSING
 
@@ -33,7 +37,7 @@ _cs.store(
 
 @hydra.main(version_base=None, config_path="conf", config_name="config")
 def entry_point(cfg: DinoConfig) -> None:
-    print(OmegaConf.to_yaml(cfg))
+    logger.info(OmegaConf.to_yaml(cfg))
 
     # Call the appropriate function based on the command
 
@@ -42,7 +46,7 @@ def entry_point(cfg: DinoConfig) -> None:
             train()
         case Command.evaluate:
             # evaluate(cfg) noqa: ERA001
-            pass
+            run_evaluation(cfg.evaluate)
         case Command.finetune:
             run_finetuning(cfg.finetune)
 
