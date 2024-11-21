@@ -41,7 +41,7 @@ apptainer exec --bind "$DATA_MOUNT" "$CONTAINER" python "$SCRIPT" $SCRIPT_ARGS
 cd /tmp/
 tar -cf zz_${SLURM_JOB_ID}_${SLURM_ARRAY_TASK_ID}.tar "$OUTPUT_DIR"
 cp zz_${SLURM_JOB_ID}_${SLURM_ARRAY_TASK_ID}.tar $SLURM_SUBMIT_DIR
-rm -rf "OUTPUT_PATH"
+rm -rf "$OUTPUT_PATH"
 
 if [ $? -eq 0 ]; then
     echo "Execution successful for dataset: $DATASET_PATH."
