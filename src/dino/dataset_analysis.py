@@ -13,6 +13,7 @@ from nltk.corpus import wordnet  # type: ignore[import-untyped]
 from PIL.Image import Image
 
 from dino.datasets import ImageNetDirectoryDataset
+from tqdm import tqdm
 
 random.seed(42)
 
@@ -34,7 +35,7 @@ def dataset_composition(
     width_counter: Counter[int] = Counter()
     height_counter: Counter[int] = Counter()
     class_frequency_counter: Counter[str] = Counter()
-    for i in range(len(dataset)):
+    for i in tqdm(range(len(dataset))):
         img, label = dataset[i]
         if isinstance(img, Image):
             width, height = img.size
