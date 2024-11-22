@@ -27,7 +27,7 @@ def train() -> None:
 
     head_hidden_dim: int = 2048
     head_output_dim: int = 4096
-    dataset_dir: str = "/vol/tmp/dobbersc-pub/imagenette2/train"  # noqa: ERA001
+    dataset_dir: str = "/vol/tmp/dobbersc-pub/imagenette2/train"
     # dataset_dir: str = "/vol/tmp/dobbersc-pub/tiny-imagenet-200/train"  # noqa: ERA001
     # dataset_dir: str = "/vol/tmp/dobbersc-pub/imagenet100/train"  # noqa: ERA001
     # dataset_dir: str = "/vol/tmp/dobbersc-pub/imagenet-kaggle/ILSVRC/Data/CLS-LOC/train"  # noqa: ERA001

@@ -1,5 +1,6 @@
 import os
 import random
+from collections import defaultdict
 from collections.abc import Callable, Generator, Sized
 from dataclasses import dataclass
 from enum import Enum
@@ -117,7 +118,7 @@ def get_dataset(cfg: DatasetConfig) -> Dataset[tuple[Image | torch.Tensor, int]]
                 root=cfg.data_dir,
                 transform=get_transform(cfg.transform),
             )
-            return deterministic_train_val_split(dataset, train=cfg.train)
+            return split_imagefolder(dataset, train=cfg.train)
         case DatasetType.CUSTOM_IMAGENET:
             return ImageNetDirectoryDataset(
                 data_dir=cfg.data_dir,
@@ -141,33 +142,56 @@ def get_dataset(cfg: DatasetConfig) -> Dataset[tuple[Image | torch.Tensor, int]]
             raise ValueError(msg)
 
 
-def deterministic_train_val_split(
+def split_imagefolder(
     dataset: ImageFolder,
     split_ratio: float = 0.9,
     train: bool = True,
 ):
-    """Splits a dataset deterministically into training and validation subsets.
+    """Splits deterministically into train/val subsets while maintaining balanced class labels."""
+    # Group indices by class
+    train_indices, val_indices = get_split_indices(dataset.samples, split_ratio)
 
-    Args:
-        dataset: The dataset to split.
-        split_ratio: Ratio for the training split. Default is 0.9.
-        train: If True, returns the training subset; otherwise returns the validation subset.
-
-    Returns:
-        A subset of the dataset (either training or validation).
-    """
-    # Deterministically sort the dataset by file path
-    sorted_indices = sorted(
-        range(len(dataset)),
-        key=lambda idx: dataset.samples[idx][0],
-    )
-
-    # Compute split indices
-    split_point = int(len(sorted_indices) * split_ratio)
+    # Return the appropriate subset
     if train:
-        return Subset(dataset, sorted_indices[:split_point])
+        return ImageFolderSubset(dataset, train_indices)
+    return ImageFolderSubset(dataset, val_indices)
 
-    return Subset(dataset, sorted_indices[split_point:])
+
+class ImageFolderSubset(Subset):
+    """A Subset of ImageFolder that retains the `classes` property."""
+
+    def __init__(self, dataset: ImageFolder, indices: list[int]):
+        super().__init__(dataset, indices)
+        self.classes = dataset.classes  # Retain the classes property
+        self.class_to_idx = dataset.class_to_idx  # Retain the class_to_idx mapping
+
+    @property
+    def samples(self):
+        """Return the samples in this subset."""
+        return [self.dataset.samples[i] for i in self.indices]
+
+
+def get_split_indices(
+    samples: list[tuple[Path, int]],
+    split_ratio: float,
+) -> tuple[list[int], list[int]]:
+    """Splits the samples into train/val indices while maintaining balanced class labels."""
+    class_to_indices = defaultdict(list)
+    for idx, (_, class_idx) in enumerate(samples):
+        class_to_indices[class_idx].append(idx)
+
+    for class_idx in class_to_indices:
+        class_to_indices[class_idx].sort(key=lambda idx: samples[idx][0])
+
+    train_indices = []
+    val_indices = []
+
+    for indices in class_to_indices.values():
+        split_point = int(len(indices) * split_ratio)
+        train_indices.extend(indices[:split_point])
+        val_indices.extend(indices[split_point:])
+
+    return train_indices, val_indices
 
 
 class ImageNetDirectoryDataset(Dataset[tuple[Image | torch.Tensor, int]]):
@@ -206,11 +230,15 @@ class ImageNetDirectoryDataset(Dataset[tuple[Image | torch.Tensor, int]]):
 
         self.class_idx_to_wnid = {v: k for k, v in self.wnid_to_class_idx.items()}
 
-        # Perform deterministic train/validation split
-        train_size = int(len(samples_raw) * split_ratio)
-        samples_raw = samples_raw[:train_size] if train else samples_raw[train_size:]
+        all_samples = [(s[0], self.wnid_to_class_idx[s[1]]) for s in samples_raw]
 
-        self.samples = [(s[0], self.wnid_to_class_idx[s[1]]) for s in samples_raw]
+        train_indices, val_indices = get_split_indices(all_samples, split_ratio)
+
+        self.samples = (
+            [all_samples[i] for i in train_indices]
+            if train
+            else [all_samples[i] for i in val_indices]
+        )
 
         if path_wnids is not None:
             self.class_idx_to_label = self.load_class_to_words(path_wnids, self.wnid_to_class_idx)

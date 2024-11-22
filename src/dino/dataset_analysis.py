@@ -11,9 +11,9 @@ import nltk  # type: ignore[import-untyped]
 import torch
 from nltk.corpus import wordnet  # type: ignore[import-untyped]
 from PIL.Image import Image
+from tqdm import tqdm
 
 from dino.datasets import ImageNetDirectoryDataset
-from tqdm import tqdm
 
 random.seed(42)
 
@@ -116,8 +116,16 @@ def main() -> None:
         dest="dataset_name",
         help="Name of the dataset variant used as a prefix in artefacts.",
     )
-    parser.add_argument("--output-dir", "-o", type=str, required=True, help="Directory to save the results.")
-    parser.add_argument("--dataset-path", "-d", type=str, required=True, help="Path to the train split of the dataset.")
+    parser.add_argument(
+        "--output-dir", "-o", type=str, required=True, help="Directory to save the results.",
+    )
+    parser.add_argument(
+        "--dataset-path",
+        "-d",
+        type=str,
+        required=True,
+        help="Path to the train split of the dataset.",
+    )
     parser.add_argument(
         "--rows",
         "-r",
@@ -138,7 +146,9 @@ def main() -> None:
     train_set = ImageNetDirectoryDataset(data_dir=Path(args.dataset_path))
 
     _ = dataset_composition(train_set, args.dataset_path, args.dataset_name, Path(args.output_dir))
-    visualize_imagenet_classes(train_set, args.rows, args.cols, args.dataset_name, Path(args.output_dir))
+    visualize_imagenet_classes(
+        train_set, args.rows, args.cols, args.dataset_name, Path(args.output_dir),
+    )
 
 
 if __name__ == "__main__":
