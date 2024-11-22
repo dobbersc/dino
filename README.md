@@ -36,7 +36,13 @@ pip install git+https://github.com/dobbersc/dino@master
 
 #### Experiments
 
-...
+Our experiments cover the following entry points:
+
+- Training: `dino cmd=train train.dataset_dir=/path/to/dataset/train/`
+- Fine-Tuning: `dino cmd=finetune dataset@finetune.dataset=imagenet finetune.dataset.data_dir=/path/to/dataset/train/`
+- Evaluation: `dino cmd=evaluate evaluate=knn dataset@evaluate.dataset=imagenet evaluate.dataset.data_dir=/path/to/dataset/test`
+
+*Note: We provide SLURM scripts for each pipeline step in the `script` directory.*
 
 #### Development
 
