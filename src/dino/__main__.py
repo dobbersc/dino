@@ -7,8 +7,8 @@ from hydra.core.config_store import ConfigStore
 from omegaconf import MISSING, OmegaConf
 
 from dino.entry_points.evaluation import EvaluatorConfig, run_evaluation
-from dino.entry_points.train import train
-from dino.finetuning import FinetuningConfig, run_finetuning
+from dino.entry_points.finetune import FinetuningConfig, run_finetuning
+from dino.entry_points.train import TrainingConfig, train
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -24,6 +24,7 @@ class DinoConfig:
     cmd: Command = MISSING
     finetune: FinetuningConfig = MISSING
     evaluate: EvaluatorConfig = MISSING
+    train: TrainingConfig = MISSING
     verbose: bool = False
     log_dir: str = MISSING
 
@@ -43,9 +44,8 @@ def entry_point(cfg: DinoConfig) -> None:
 
     match cfg.cmd:
         case Command.train:
-            train()
+            train(cfg.train)
         case Command.evaluate:
-            # evaluate(cfg) noqa: ERA001
             run_evaluation(cfg.evaluate)
         case Command.finetune:
             run_finetuning(cfg.finetune)

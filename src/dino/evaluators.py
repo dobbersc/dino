@@ -95,5 +95,6 @@ class LinearEvaluator(Evaluator):
     ) -> list[int]:
         maxk = max(topk)
         _, indices = output.topk(k=maxk, dim=-1, largest=True, sorted=True)
+        print("indices", indices)
         expanded_targets = targets.unsqueeze(-1).expand_as(indices)
         return [int((torch.eq(indices[:, :k], expanded_targets[:, :k])).sum().item()) for k in topk]

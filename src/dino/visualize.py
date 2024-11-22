@@ -29,6 +29,7 @@ def display_data(dataset: ImageNetDirectoryDataset, class_idx=None, predict=None
         img_indices = random.sample(range(len(dataset)), DISPLAY_NUM_IMAGES)
         raw_images, class_indices = zip(*[dataset[i] for i in img_indices], strict=False)
         titles = [f"g={dataset.get_class_name(g)[:max_length]}" for g in class_indices]
+        print(titles)
 
     if predict is not None:
         # Assuming `predict` is a function that takes in a list of images and returns a list of predictions
@@ -95,8 +96,12 @@ def plot_augmentations(image: torch.Tensor, output_dir: Path) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="DINO visualizations.")
-    parser.add_argument("--output-dir", "-o", type=str, required=True, help="Directory to save the results.")
-    parser.add_argument("--image-path", "-i", type=str, required=True, help="Path to the input image.")
+    parser.add_argument(
+        "--output-dir", "-o", type=str, required=True, help="Directory to save the results.",
+    )
+    parser.add_argument(
+        "--image-path", "-i", type=str, required=True, help="Path to the input image.",
+    )
     args = parser.parse_args()
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
 

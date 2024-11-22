@@ -7,4 +7,4 @@ defaults:
 
 batch_size: 16
 mode: LINEAR
-topk: [1, 5]
+topk: [1,]

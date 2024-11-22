@@ -42,9 +42,11 @@ _cs.store(
 
 def run_knn(cfg: EvaluatorConfig) -> None:
     logger.info("Running KNN evaluation")
+
     model = load_backbone(cfg.backbone.model_type, cfg.backbone.pretrained_weights)
     msg = f"Loaded model with backbone {cfg.backbone.model_type}"
     logger.info(msg)
+
     cfg.dataset.train = True
     train_ds = get_dataset(cfg.dataset)
     train_loader = DataLoader(
@@ -76,12 +78,12 @@ def run_knn(cfg: EvaluatorConfig) -> None:
 def run_linear(cfg: EvaluatorConfig) -> None:
     logger.info("Running linear evaluation")
     model = load_model_with_head(
-        cfg.backbone.model_type,
-        cfg.head.model_type,
-        cfg.head.output_dim,
-        cfg.head.hidden_dim,
-        cfg.backbone.pretrained_weights,
-        cfg.head.pretrained_weights,
+        model_type=cfg.backbone.model_type,
+        head_type=cfg.head.model_type,
+        output_dim=cfg.head.output_dim,
+        hidden_dim=cfg.head.hidden_dim,
+        backbone_weights=cfg.backbone.pretrained_weights,
+        head_weights=cfg.head.pretrained_weights,
     )
     msg = f"Loaded model with backbone {cfg.backbone.model_type} and head {cfg.head.model_type}"
     logger.info(msg)
@@ -100,6 +102,7 @@ def run_linear(cfg: EvaluatorConfig) -> None:
     evaluator = LinearEvaluator(eval_loader, model)
     accuracies = evaluator.evaluate(topk=cfg.topk)
     msg = f"Linear evaluation accuracies: {accuracies}"
+    logger.info(msg)
 
 
 def run_evaluation(cfg: EvaluatorConfig) -> None:

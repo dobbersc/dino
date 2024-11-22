@@ -10,4 +10,4 @@ num_epochs: 10
 batch_size: 32
 mode: LINEAR_PROBE
 model_dir: ${hydra:runtime.cwd}/models/
-model_tag: vit_imagenet
+model_tag: vit_dino_s_image_net_linear_probe

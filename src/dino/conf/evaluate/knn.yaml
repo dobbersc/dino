@@ -6,4 +6,4 @@ defaults:
 
 batch_size: 64
 mode: KNN
-k: 20
+k: 1

@@ -5,5 +5,5 @@ defaults:
 type_: CUSTOM_IMAGENET
 transform: DEFAULT
 data_dir: ${hydra:runtime.cwd}/data/tiny-imagenet-200/train
-num_sample_classes: 5
+sample_classes_indices: [28, 163]
 path_wnids: ${hydra:runtime.cwd}/data/tiny-imagenet-200/words.txt

@@ -1,5 +1,5 @@
+import logging
 import os
-import random
 from collections import defaultdict
 from collections.abc import Callable, Generator, Sized
 from dataclasses import dataclass
@@ -18,6 +18,8 @@ from torchvision import transforms  # type: ignore
 from torchvision.datasets import CIFAR10, ImageFolder
 
 from dino.augmentation import Augmenter
+
+logger = logging.getLogger(__name__)
 
 _T_co = TypeVar("_T_co", covariant=True)
 
@@ -44,7 +46,7 @@ class DatasetConfig:
 
 @dataclass
 class CustomImageNetConfig(DatasetConfig):
-    num_sample_classes: int | None = None
+    sample_classes_indices: tuple[int, ...] | None = None
     path_wnids: str | None = None
 
 
@@ -124,7 +126,7 @@ def get_dataset(cfg: DatasetConfig) -> Dataset[tuple[Image | torch.Tensor, int]]
                 data_dir=cfg.data_dir,
                 transform=get_transform(cfg.transform),
                 path_wnids=cfg.path_wnids,
-                num_sample_classes=cfg.num_sample_classes,
+                sample_classes_indices=cfg.sample_classes_indices,
                 train=cfg.train,
             )
         case DatasetType.CIFAR10:
@@ -202,7 +204,7 @@ class ImageNetDirectoryDataset(Dataset[tuple[Image | torch.Tensor, int]]):
         data_dir: str | Path,
         transform: Callable[[Image], torch.Tensor] | None = None,
         path_wnids: str | Path | None = None,
-        num_sample_classes: int | None = None,
+        sample_classes_indices: tuple[int, ...] | None = None,
         train: bool = True,  # New flag for train/validation split
         split_ratio: float = 0.9,  # Ratio for train split
     ):
@@ -220,11 +222,22 @@ class ImageNetDirectoryDataset(Dataset[tuple[Image | torch.Tensor, int]]):
         self.transform = transform
         samples_raw: list[tuple[Path, str]] = list(self.load_raw_samples(data_dir))
 
+        # first then samples from raw
+        samples_raw = sorted(
+            samples_raw,
+            key=lambda x: x[0],  # sort by path
+        )
+
+        first_samples = samples_raw[:5]
+        msg = f"First samples: {first_samples}"
+        logger.info(msg)
+
         self.wnid_to_class_idx = self.get_wnid_to_class_mapping(samples_raw)
-        if num_sample_classes is not None:
-            class_indices = random.sample(range(len(self.wnid_to_class_idx)), num_sample_classes)
+        if sample_classes_indices is not None:
             samples_raw = list(
-                filter(lambda s: self.wnid_to_class_idx[s[1]] in class_indices, samples_raw),
+                filter(
+                    lambda s: self.wnid_to_class_idx[s[1]] in sample_classes_indices, samples_raw,
+                ),
             )
             self.wnid_to_class_idx = self.get_wnid_to_class_mapping(samples_raw)
 
@@ -239,6 +252,16 @@ class ImageNetDirectoryDataset(Dataset[tuple[Image | torch.Tensor, int]]):
             if train
             else [all_samples[i] for i in val_indices]
         )
+
+        # for debugging
+        if sample_classes_indices is not None:
+            sample_classes = {s[1] for s in self.samples}
+            class_names = {c_idx: self.class_idx_to_wnid[c_idx] for c_idx in sample_classes}
+            msg = (
+                f"Sampled {len(self.samples)} samples from {sample_classes_indices} "
+                f"resulting classes: {class_names}"
+            )
+            logger.info(msg)
 
         if path_wnids is not None:
             self.class_idx_to_label = self.load_class_to_words(path_wnids, self.wnid_to_class_idx)
@@ -268,6 +291,12 @@ class ImageNetDirectoryDataset(Dataset[tuple[Image | torch.Tensor, int]]):
                         yield (file_path, wnid_name)
 
     @staticmethod
+    def get_wnid_to_class_mapping(raw_samples: list[tuple[Path, str]]) -> dict[str, int]:
+        """Creates a mapping from wnid to class index."""
+        wnids_sorted = sorted({wnid for _, wnid in raw_samples})
+        return {wnid_name: class_idx for class_idx, wnid_name in enumerate(wnids_sorted)}
+
+    @staticmethod
     def load_class_to_words(path: str | Path, wnid_to_class_idx: dict[str, int]) -> dict[int, str]:
         """Loads the class to words mapping from the provided file."""
         class_idx_to_label: dict[int, str] = {}
@@ -278,16 +307,6 @@ class ImageNetDirectoryDataset(Dataset[tuple[Image | torch.Tensor, int]]):
                     class_idx = wnid_to_class_idx[wnid]
                     class_idx_to_label[class_idx] = label
         return class_idx_to_label
-
-    @staticmethod
-    def get_wnid_to_class_mapping(raw_samples: list[tuple[Path, str]]) -> dict[str, int]:
-        """Creates a mapping from wnid to class index."""
-        return {
-            wnid_name: class_idx
-            for class_idx, wnid_name in enumerate(
-                {wnid for _, wnid in raw_samples},
-            )  # it is important to use set here to avoid strange offsets and steps
-        }
 
     def __len__(self) -> int:
         """Returns the number of samples in the dataset."""
