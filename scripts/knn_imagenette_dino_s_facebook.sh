@@ -1,11 +1,11 @@
 #!/bin/bash
 #SBATCH --job-name=dino-finetuning
-#SBATCH --partition=gpu-test
+#SBATCH --partition=gpu-teaching-2h
 #SBATCH --gpus-per-node=1
 #SBATCH --ntasks-per-node=2
-#SBATCH --output=logs/finetuning-%j.out
+#SBATCH --output=logs/knn-eval-%j.out
 
-SQFS_FILENAME=imagenet_2012_train_set_small.sqfs
+SQFS_FILENAME=imagenette2_160_train.sqfs
 
 # 1. Copy the squashed dataset to the node's /tmp directory
 cp /home/space/datasets-sqfs/$SQFS_FILENAME /tmp/
@@ -13,8 +13,9 @@ cp /home/space/datasets-sqfs/$SQFS_FILENAME /tmp/
 # 2. Define bind target, dataset mount path, and Apptainer image path
 DATA_TARGET_DIR=/input-data
 DATA_MOUNT="/tmp/$SQFS_FILENAME:$DATA_TARGET_DIR:image-src=/"
-APPTAINER_SIF=/home/pml20/dino/containers/finetuning.sif
-COMMAND="dino finetune"
+APPTAINER_SIF=/home/pml20/dino/containers/dino-dev.sif
+
+COMMAND="dino cmd=evaluate evaluate=knn evaluate.dataset.data_dir=$DATA_TARGET_DIR"
 # COMMAND="python scripts/test.py"
 
 # 3. Bind the squashed dataset to the Apptainer environment and run the command

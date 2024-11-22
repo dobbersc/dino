@@ -253,11 +253,21 @@ def load_backbone(
         case ModelType.VIT_B:
             model = timm.create_model("vit_base_patch16_224", pretrained=False)
         case ModelType.DEIT_S:
-            model = timm.create_model(
+            backbone = timm.create_model(
                 "deit_small_patch16_224",
                 num_classes=0,
                 dynamic_img_size=True,
                 pretrained=False,
+            )
+            head_hidden_dim: int = 2048
+            head_output_dim: int = 4096
+            model = ModelWithHead(
+                    model=backbone,
+                    head=DINOHead(
+                        input_dim=backbone.num_features,
+                        output_dim=head_output_dim,
+                        hidden_dim=head_hidden_dim,
+                ),
             )
         case ModelType.RESNET_50:
             model = timm.create_model("resnet50", pretrained=False)

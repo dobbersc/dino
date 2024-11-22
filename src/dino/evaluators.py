@@ -8,9 +8,10 @@ from sklearn.metrics import accuracy_score  # type: ignore[import-untyped]
 from sklearn.neighbors import KNeighborsClassifier  # type: ignore[import-untyped]
 from torch.utils.data import DataLoader
 from tqdm import tqdm
+from dino.utils.torch import detect_device
 
 logger = logging.getLogger(__name__)
-
+device = detect_device()
 
 class Evaluator(ABC):
     @abstractmethod
@@ -30,7 +31,7 @@ class KNNEvaluator(Evaluator):
     ) -> None:
         self.eval_loader = eval_loader
         self.train_loader = train_loader
-        self.model = model
+        self.model = model.to(device)
 
     @torch.no_grad()
     def evaluate(
@@ -50,14 +51,21 @@ class KNNEvaluator(Evaluator):
 
     def _extract_features(
         self,
-        loader: DataLoader[Batch],
-    ) -> tuple[list[torch.Tensor], list[torch.Tensor]]:
+        loader: DataLoader,
+    ) -> tuple[list[np.ndarray], list[np.ndarray]]:
         features, targets = ([], [])
         logger.info("Extracting features ...")
         for images, targets_ in tqdm(loader):
+            # Move images to the appropriate device
+            images = images.to(device)
+    
+            # Forward pass to extract features
             output = self.model(images)
-            features.extend(output)
-            targets.extend(targets_)
+    
+            # Move the output and targets to CPU and convert to NumPy
+            features.extend(output.cpu().numpy())
+            targets.extend(targets_.cpu().numpy())
+        
         return features, targets
 
 
@@ -68,16 +76,19 @@ class LinearEvaluator(Evaluator):
         model: torch.nn.Module,
     ) -> None:
         self.eval_loader = eval_loader
-        self.model = model
+        self.model = model.to(device)
 
     @torch.no_grad()
     def evaluate(
         self,
         topk: tuple[int, ...] = (1,),
     ) -> dict[str, float]:
+        
         self.model.eval()
         total_counts = np.zeros(len(topk))
         for images, targets in tqdm(self.eval_loader):
+            images = images.to(device)
+            targets = targets.to(device)
             output = self.model(images)
             correct_predictions = self._count_correct_predictions(output, targets, topk)
             total_counts = np.add(total_counts, correct_predictions)
