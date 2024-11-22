@@ -1,0 +1,375 @@
+cmd: train
+finetune:
+  model_dir: /models
+  model_tag: default
+  base_lr: 0.001
+  backbone_lr: 1.0e-05
+  num_epochs: 1
+  batch_size: 32
+  mode: LINEAR_PROBE
+  dataset:
+    type_: IMAGE_FOLDER
+    transform: DEFAULT
+    data_dir: ${hydra:runtime.cwd}/data/tiny-imagenet-200/train
+  backbone:
+    model_type: VIT_DINO_S
+    pretrained_weights: null
+  head:
+    model_type: LINEAR
+    output_dim: 1000
+    pretrained_weights: null
+verbose: true
+log_dir: /logs
+
+[2024-11-20 13:27:51,062][dino.entry_points.train][INFO] - /vol/tmp/dobbersc-pub/imagenet-kaggle/ILSVRC/Data/CLS-LOC/train; model_name='resnet50'; pretrained=False
+[2024-11-20 13:27:55,824][dino.trainer][INFO] - ----------------------------------------------------------------------------------------------------
+[2024-11-20 13:27:55,824][dino.trainer][INFO] - Training Model
+[2024-11-20 13:27:55,824][dino.trainer][INFO] - ----------------------------------------------------------------------------------------------------
+[2024-11-20 13:27:55,824][dino.trainer][INFO] - ModelWithHead(
+  (model): ResNet(
+    (conv1): Conv2d(3, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
+    (bn1): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (act1): ReLU(inplace=True)
+    (maxpool): MaxPool2d(kernel_size=3, stride=2, padding=1, dilation=1, ceil_mode=False)
+    (layer1): Sequential(
+      (0): Bottleneck(
+        (conv1): Conv2d(64, 64, kernel_size=(1, 1), stride=(1, 1), bias=False)
+        (bn1): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (act1): ReLU(inplace=True)
+        (conv2): Conv2d(64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+        (bn2): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (drop_block): Identity()
+        (act2): ReLU(inplace=True)
+        (aa): Identity()
+        (conv3): Conv2d(64, 256, kernel_size=(1, 1), stride=(1, 1), bias=False)
+        (bn3): BatchNorm2d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (act3): ReLU(inplace=True)
+        (downsample): Sequential(
+          (0): Conv2d(64, 256, kernel_size=(1, 1), stride=(1, 1), bias=False)
+          (1): BatchNorm2d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        )
+      )
+      (1): Bottleneck(
+        (conv1): Conv2d(256, 64, kernel_size=(1, 1), stride=(1, 1), bias=False)
+        (bn1): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (act1): ReLU(inplace=True)
+        (conv2): Conv2d(64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+        (bn2): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (drop_block): Identity()
+        (act2): ReLU(inplace=True)
+        (aa): Identity()
+        (conv3): Conv2d(64, 256, kernel_size=(1, 1), stride=(1, 1), bias=False)
+        (bn3): BatchNorm2d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (act3): ReLU(inplace=True)
+      )
+      (2): Bottleneck(
+        (conv1): Conv2d(256, 64, kernel_size=(1, 1), stride=(1, 1), bias=False)
+        (bn1): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (act1): ReLU(inplace=True)
+        (conv2): Conv2d(64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+        (bn2): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (drop_block): Identity()
+        (act2): ReLU(inplace=True)
+        (aa): Identity()
+        (conv3): Conv2d(64, 256, kernel_size=(1, 1), stride=(1, 1), bias=False)
+        (bn3): BatchNorm2d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (act3): ReLU(inplace=True)
+      )
+    )
+    (layer2): Sequential(
+      (0): Bottleneck(
+        (conv1): Conv2d(256, 128, kernel_size=(1, 1), stride=(1, 1), bias=False)
+        (bn1): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (act1): ReLU(inplace=True)
+        (conv2): Conv2d(128, 128, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), bias=False)
+        (bn2): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (drop_block): Identity()
+        (act2): ReLU(inplace=True)
+        (aa): Identity()
+        (conv3): Conv2d(128, 512, kernel_size=(1, 1), stride=(1, 1), bias=False)
+        (bn3): BatchNorm2d(512, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (act3): ReLU(inplace=True)
+        (downsample): Sequential(
+          (0): Conv2d(256, 512, kernel_size=(1, 1), stride=(2, 2), bias=False)
+          (1): BatchNorm2d(512, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        )
+      )
+      (1): Bottleneck(
+        (conv1): Conv2d(512, 128, kernel_size=(1, 1), stride=(1, 1), bias=False)
+        (bn1): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (act1): ReLU(inplace=True)
+        (conv2): Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+        (bn2): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (drop_block): Identity()
+        (act2): ReLU(inplace=True)
+        (aa): Identity()
+        (conv3): Conv2d(128, 512, kernel_size=(1, 1), stride=(1, 1), bias=False)
+        (bn3): BatchNorm2d(512, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (act3): ReLU(inplace=True)
+      )
+      (2): Bottleneck(
+        (conv1): Conv2d(512, 128, kernel_size=(1, 1), stride=(1, 1), bias=False)
+        (bn1): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (act1): ReLU(inplace=True)
+        (conv2): Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+        (bn2): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (drop_block): Identity()
+        (act2): ReLU(inplace=True)
+        (aa): Identity()
+        (conv3): Conv2d(128, 512, kernel_size=(1, 1), stride=(1, 1), bias=False)
+        (bn3): BatchNorm2d(512, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (act3): ReLU(inplace=True)
+      )
+      (3): Bottleneck(
+        (conv1): Conv2d(512, 128, kernel_size=(1, 1), stride=(1, 1), bias=False)
+        (bn1): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (act1): ReLU(inplace=True)
+        (conv2): Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+        (bn2): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (drop_block): Identity()
+        (act2): ReLU(inplace=True)
+        (aa): Identity()
+        (conv3): Conv2d(128, 512, kernel_size=(1, 1), stride=(1, 1), bias=False)
+        (bn3): BatchNorm2d(512, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (act3): ReLU(inplace=True)
+      )
+    )
+    (layer3): Sequential(
+      (0): Bottleneck(
+        (conv1): Conv2d(512, 256, kernel_size=(1, 1), stride=(1, 1), bias=False)
+        (bn1): BatchNorm2d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (act1): ReLU(inplace=True)
+        (conv2): Conv2d(256, 256, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), bias=False)
+        (bn2): BatchNorm2d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (drop_block): Identity()
+        (act2): ReLU(inplace=True)
+        (aa): Identity()
+        (conv3): Conv2d(256, 1024, kernel_size=(1, 1), stride=(1, 1), bias=False)
+        (bn3): BatchNorm2d(1024, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (act3): ReLU(inplace=True)
+        (downsample): Sequential(
+          (0): Conv2d(512, 1024, kernel_size=(1, 1), stride=(2, 2), bias=False)
+          (1): BatchNorm2d(1024, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        )
+      )
+      (1): Bottleneck(
+        (conv1): Conv2d(1024, 256, kernel_size=(1, 1), stride=(1, 1), bias=False)
+        (bn1): BatchNorm2d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (act1): ReLU(inplace=True)
+        (conv2): Conv2d(256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+        (bn2): BatchNorm2d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (drop_block): Identity()
+        (act2): ReLU(inplace=True)
+        (aa): Identity()
+        (conv3): Conv2d(256, 1024, kernel_size=(1, 1), stride=(1, 1), bias=False)
+        (bn3): BatchNorm2d(1024, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (act3): ReLU(inplace=True)
+      )
+      (2): Bottleneck(
+        (conv1): Conv2d(1024, 256, kernel_size=(1, 1), stride=(1, 1), bias=False)
+        (bn1): BatchNorm2d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (act1): ReLU(inplace=True)
+        (conv2): Conv2d(256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+        (bn2): BatchNorm2d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (drop_block): Identity()
+        (act2): ReLU(inplace=True)
+        (aa): Identity()
+        (conv3): Conv2d(256, 1024, kernel_size=(1, 1), stride=(1, 1), bias=False)
+        (bn3): BatchNorm2d(1024, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (act3): ReLU(inplace=True)
+      )
+      (3): Bottleneck(
+        (conv1): Conv2d(1024, 256, kernel_size=(1, 1), stride=(1, 1), bias=False)
+        (bn1): BatchNorm2d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (act1): ReLU(inplace=True)
+        (conv2): Conv2d(256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+        (bn2): BatchNorm2d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (drop_block): Identity()
+        (act2): ReLU(inplace=True)
+        (aa): Identity()
+        (conv3): Conv2d(256, 1024, kernel_size=(1, 1), stride=(1, 1), bias=False)
+        (bn3): BatchNorm2d(1024, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (act3): ReLU(inplace=True)
+      )
+      (4): Bottleneck(
+        (conv1): Conv2d(1024, 256, kernel_size=(1, 1), stride=(1, 1), bias=False)
+        (bn1): BatchNorm2d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (act1): ReLU(inplace=True)
+        (conv2): Conv2d(256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+        (bn2): BatchNorm2d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (drop_block): Identity()
+        (act2): ReLU(inplace=True)
+        (aa): Identity()
+        (conv3): Conv2d(256, 1024, kernel_size=(1, 1), stride=(1, 1), bias=False)
+        (bn3): BatchNorm2d(1024, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (act3): ReLU(inplace=True)
+      )
+      (5): Bottleneck(
+        (conv1): Conv2d(1024, 256, kernel_size=(1, 1), stride=(1, 1), bias=False)
+        (bn1): BatchNorm2d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (act1): ReLU(inplace=True)
+        (conv2): Conv2d(256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+        (bn2): BatchNorm2d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (drop_block): Identity()
+        (act2): ReLU(inplace=True)
+        (aa): Identity()
+        (conv3): Conv2d(256, 1024, kernel_size=(1, 1), stride=(1, 1), bias=False)
+        (bn3): BatchNorm2d(1024, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (act3): ReLU(inplace=True)
+      )
+    )
+    (layer4): Sequential(
+      (0): Bottleneck(
+        (conv1): Conv2d(1024, 512, kernel_size=(1, 1), stride=(1, 1), bias=False)
+        (bn1): BatchNorm2d(512, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (act1): ReLU(inplace=True)
+        (conv2): Conv2d(512, 512, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), bias=False)
+        (bn2): BatchNorm2d(512, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (drop_block): Identity()
+        (act2): ReLU(inplace=True)
+        (aa): Identity()
+        (conv3): Conv2d(512, 2048, kernel_size=(1, 1), stride=(1, 1), bias=False)
+        (bn3): BatchNorm2d(2048, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (act3): ReLU(inplace=True)
+        (downsample): Sequential(
+          (0): Conv2d(1024, 2048, kernel_size=(1, 1), stride=(2, 2), bias=False)
+          (1): BatchNorm2d(2048, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        )
+      )
+      (1): Bottleneck(
+        (conv1): Conv2d(2048, 512, kernel_size=(1, 1), stride=(1, 1), bias=False)
+        (bn1): BatchNorm2d(512, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (act1): ReLU(inplace=True)
+        (conv2): Conv2d(512, 512, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+        (bn2): BatchNorm2d(512, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (drop_block): Identity()
+        (act2): ReLU(inplace=True)
+        (aa): Identity()
+        (conv3): Conv2d(512, 2048, kernel_size=(1, 1), stride=(1, 1), bias=False)
+        (bn3): BatchNorm2d(2048, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (act3): ReLU(inplace=True)
+      )
+      (2): Bottleneck(
+        (conv1): Conv2d(2048, 512, kernel_size=(1, 1), stride=(1, 1), bias=False)
+        (bn1): BatchNorm2d(512, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (act1): ReLU(inplace=True)
+        (conv2): Conv2d(512, 512, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+        (bn2): BatchNorm2d(512, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (drop_block): Identity()
+        (act2): ReLU(inplace=True)
+        (aa): Identity()
+        (conv3): Conv2d(512, 2048, kernel_size=(1, 1), stride=(1, 1), bias=False)
+        (bn3): BatchNorm2d(2048, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (act3): ReLU(inplace=True)
+      )
+    )
+    (global_pool): SelectAdaptivePool2d(pool_type=avg, flatten=Flatten(start_dim=1, end_dim=-1))
+    (fc): Identity()
+  )
+  (head): DINOHead(
+    (mlp): Sequential(
+      (0): Linear(in_features=2048, out_features=2048, bias=True)
+      (1): GELU(approximate='none')
+      (2): Linear(in_features=2048, out_features=2048, bias=True)
+      (3): GELU(approximate='none')
+      (4): Linear(in_features=2048, out_features=256, bias=True)
+    )
+    (norm): L2NormLayer()
+    (last_layer): Linear(in_features=256, out_features=4096, bias=False)
+  )
+)
+[2024-11-20 13:27:55,828][dino.trainer][INFO] - ----------------------------------------------------------------------------------------------------
+[2024-11-20 13:27:55,828][dino.trainer][INFO] - Training Hyperparameters
+[2024-11-20 13:27:55,828][dino.trainer][INFO] -  - max_epochs: 100
+[2024-11-20 13:27:55,828][dino.trainer][INFO] -  - batch_size: 128
+[2024-11-20 13:27:55,828][dino.trainer][INFO] - ----------------------------------------------------------------------------------------------------
+[2024-11-20 13:27:55,828][dino.trainer][INFO] - Computational Parameters:
+[2024-11-20 13:27:55,828][dino.trainer][INFO] -  - num_workers: 8
+[2024-11-20 13:27:55,828][dino.trainer][INFO] -  - device: device(type='cuda')
+[2024-11-20 13:27:55,829][dino.trainer][INFO] - ----------------------------------------------------------------------------------------------------
+[2024-11-20 13:27:55,829][dino.trainer][INFO] - Dataset Information:
+[2024-11-20 13:27:55,829][dino.trainer][INFO] -  - train: 1281167 data points
+[2024-11-20 13:27:55,829][dino.trainer][INFO] - ----------------------------------------------------------------------------------------------------
+[2024-11-20 13:27:55,829][dino.trainer][INFO] - EPOCH 1
+[2024-11-20 14:02:35,837][dino.trainer][INFO] - batch 1000/10009 - loss 8.4198 - student_entropy 8.2074 - teacher_entropy 8.1012 - kl_divergence 0.3186 - lr 0.00000250 - teacher momentum 0.9960 - time 2080.00s
+[2024-11-20 14:33:55,640][dino.trainer][INFO] - batch 2000/10009 - loss 8.3752 - student_entropy 8.2567 - teacher_entropy 8.2048 - kl_divergence 0.1704 - lr 0.00000499 - teacher momentum 0.9960 - time 3959.81s
+[2024-11-20 15:04:29,283][dino.trainer][INFO] - batch 3000/10009 - loss 8.3562 - student_entropy 8.2769 - teacher_entropy 8.2420 - kl_divergence 0.1142 - lr 0.00000749 - teacher momentum 0.9960 - time 5793.45s
+[2024-11-20 15:33:15,419][dino.trainer][INFO] - batch 4000/10009 - loss 8.3466 - student_entropy 8.2871 - teacher_entropy 8.2608 - kl_divergence 0.0858 - lr 0.00000999 - teacher momentum 0.9960 - time 7519.59s
+[2024-11-20 16:01:58,071][dino.trainer][INFO] - batch 5000/10009 - loss 8.3408 - student_entropy 8.2932 - teacher_entropy 8.2722 - kl_divergence 0.0687 - lr 0.00001249 - teacher momentum 0.9960 - time 9242.24s
+[2024-11-20 16:30:53,509][dino.trainer][INFO] - batch 6000/10009 - loss 8.3370 - student_entropy 8.2973 - teacher_entropy 8.2797 - kl_divergence 0.0572 - lr 0.00001498 - teacher momentum 0.9960 - time 10977.68s
+[2024-11-20 16:59:47,426][dino.trainer][INFO] - batch 7000/10009 - loss 8.3343 - student_entropy 8.3002 - teacher_entropy 8.2852 - kl_divergence 0.0491 - lr 0.00001748 - teacher momentum 0.9960 - time 12711.59s
+[2024-11-20 17:28:39,403][dino.trainer][INFO] - batch 8000/10009 - loss 8.3322 - student_entropy 8.3024 - teacher_entropy 8.2892 - kl_divergence 0.0429 - lr 0.00001998 - teacher momentum 0.9960 - time 14443.57s
+[2024-11-20 17:57:38,771][dino.trainer][INFO] - batch 9000/10009 - loss 8.3306 - student_entropy 8.3041 - teacher_entropy 8.2924 - kl_divergence 0.0382 - lr 0.00002248 - teacher momentum 0.9960 - time 16182.94s
+[2024-11-20 18:26:36,459][dino.trainer][INFO] - batch 10000/10009 - loss 8.3293 - student_entropy 8.3055 - teacher_entropy 8.2949 - kl_divergence 0.0344 - lr 0.00002498 - teacher momentum 0.9960 - time 17920.63s
+[2024-11-20 18:26:51,130][dino.trainer][INFO] - ----------------------------------------------------------------------------------------------------
+[2024-11-20 18:26:51,131][dino.trainer][INFO] - EPOCH 1 DONE
+[2024-11-20 18:26:51,131][dino.trainer][INFO] - Loss: 8.32929718
+[2024-11-20 18:26:51,131][dino.trainer][INFO] - Student Entropy: 8.30550478
+[2024-11-20 18:26:51,131][dino.trainer][INFO] - Teacher Entropy: 8.29496737
+[2024-11-20 18:26:51,132][dino.trainer][INFO] - KL Divergence: 0.03432995
+[2024-11-20 18:26:51,132][dino.trainer][INFO] - ----------------------------------------------------------------------------------------------------
+[2024-11-20 18:26:51,132][dino.trainer][INFO] - EPOCH 2
+[2024-11-20 18:55:48,520][dino.trainer][INFO] - batch 1000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00002750 - teacher momentum 0.9960 - time 1737.38s
+[2024-11-20 19:24:41,273][dino.trainer][INFO] - batch 2000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00002999 - teacher momentum 0.9960 - time 3470.13s
+[2024-11-20 19:53:40,808][dino.trainer][INFO] - batch 3000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00003249 - teacher momentum 0.9960 - time 5209.67s
+[2024-11-20 20:22:56,238][dino.trainer][INFO] - batch 4000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00003499 - teacher momentum 0.9960 - time 6965.10s
+[2024-11-20 20:51:48,475][dino.trainer][INFO] - batch 5000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00003749 - teacher momentum 0.9960 - time 8697.34s
+[2024-11-20 21:20:49,021][dino.trainer][INFO] - batch 6000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00003998 - teacher momentum 0.9960 - time 10437.88s
+[2024-11-20 21:49:36,198][dino.trainer][INFO] - batch 7000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00004248 - teacher momentum 0.9960 - time 12165.06s
+[2024-11-20 22:18:42,923][dino.trainer][INFO] - batch 8000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00004498 - teacher momentum 0.9960 - time 13911.78s
+[2024-11-20 22:47:42,552][dino.trainer][INFO] - batch 9000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00004748 - teacher momentum 0.9960 - time 15651.41s
+[2024-11-20 23:22:38,089][dino.trainer][INFO] - batch 10000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00004998 - teacher momentum 0.9960 - time 17746.95s
+[2024-11-20 23:22:53,932][dino.trainer][INFO] - ----------------------------------------------------------------------------------------------------
+[2024-11-20 23:22:53,933][dino.trainer][INFO] - EPOCH 2 DONE
+[2024-11-20 23:22:53,933][dino.trainer][INFO] - Loss: 8.31776536
+[2024-11-20 23:22:53,933][dino.trainer][INFO] - Student Entropy: 8.31776594
+[2024-11-20 23:22:53,933][dino.trainer][INFO] - Teacher Entropy: 8.31776538
+[2024-11-20 23:22:53,933][dino.trainer][INFO] - KL Divergence: 0.00000157
+[2024-11-20 23:22:53,933][dino.trainer][INFO] - ----------------------------------------------------------------------------------------------------
+[2024-11-20 23:22:53,933][dino.trainer][INFO] - EPOCH 3
+[2024-11-20 23:51:41,886][dino.trainer][INFO] - batch 1000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00005250 - teacher momentum 0.9960 - time 1727.95s
+[2024-11-21 00:20:09,705][dino.trainer][INFO] - batch 2000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00005499 - teacher momentum 0.9960 - time 3435.76s
+[2024-11-21 01:01:12,852][dino.trainer][INFO] - batch 3000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00005749 - teacher momentum 0.9960 - time 5898.91s
+[2024-11-21 01:39:02,514][dino.trainer][INFO] - batch 4000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00005999 - teacher momentum 0.9960 - time 8168.57s
+[2024-11-21 02:11:00,896][dino.trainer][INFO] - batch 5000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00006249 - teacher momentum 0.9960 - time 10086.96s
+[2024-11-21 02:39:34,498][dino.trainer][INFO] - batch 6000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00006498 - teacher momentum 0.9960 - time 11800.56s
+[2024-11-21 03:07:47,151][dino.trainer][INFO] - batch 7000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00006748 - teacher momentum 0.9960 - time 13493.21s
+[2024-11-21 03:36:07,092][dino.trainer][INFO] - batch 8000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00006998 - teacher momentum 0.9960 - time 15193.15s
+[2024-11-21 04:04:41,162][dino.trainer][INFO] - batch 9000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00007248 - teacher momentum 0.9960 - time 16907.22s
+[2024-11-21 04:33:17,654][dino.trainer][INFO] - batch 10000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00007498 - teacher momentum 0.9960 - time 18623.71s
+[2024-11-21 04:33:33,044][dino.trainer][INFO] - ----------------------------------------------------------------------------------------------------
+[2024-11-21 04:33:33,044][dino.trainer][INFO] - EPOCH 3 DONE
+[2024-11-21 04:33:33,044][dino.trainer][INFO] - Loss: 8.31776524
+[2024-11-21 04:33:33,044][dino.trainer][INFO] - Student Entropy: 8.31776619
+[2024-11-21 04:33:33,044][dino.trainer][INFO] - Teacher Entropy: 8.31776619
+[2024-11-21 04:33:33,044][dino.trainer][INFO] - KL Divergence: 0.00000032
+[2024-11-21 04:33:33,045][dino.trainer][INFO] - ----------------------------------------------------------------------------------------------------
+[2024-11-21 04:33:33,045][dino.trainer][INFO] - EPOCH 4
+[2024-11-21 05:02:17,324][dino.trainer][INFO] - batch 1000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00007750 - teacher momentum 0.9960 - time 1724.28s
+[2024-11-21 05:30:33,120][dino.trainer][INFO] - batch 2000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00007999 - teacher momentum 0.9960 - time 3420.07s
+[2024-11-21 05:58:52,994][dino.trainer][INFO] - batch 3000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00008249 - teacher momentum 0.9960 - time 5119.95s
+[2024-11-21 06:27:24,893][dino.trainer][INFO] - batch 4000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00008499 - teacher momentum 0.9960 - time 6831.85s
+[2024-11-21 06:56:05,046][dino.trainer][INFO] - batch 5000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00008749 - teacher momentum 0.9960 - time 8552.00s
+[2024-11-21 07:24:34,747][dino.trainer][INFO] - batch 6000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00008998 - teacher momentum 0.9960 - time 10261.70s
+[2024-11-21 07:53:08,924][dino.trainer][INFO] - batch 7000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00009248 - teacher momentum 0.9960 - time 11975.88s
+[2024-11-21 08:21:33,416][dino.trainer][INFO] - batch 8000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00009498 - teacher momentum 0.9960 - time 13680.37s
+[2024-11-21 08:49:58,753][dino.trainer][INFO] - batch 9000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00009748 - teacher momentum 0.9960 - time 15385.71s
+[2024-11-21 09:18:15,465][dino.trainer][INFO] - batch 10000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00009998 - teacher momentum 0.9960 - time 17082.42s
+[2024-11-21 09:18:29,924][dino.trainer][INFO] - ----------------------------------------------------------------------------------------------------
+[2024-11-21 09:18:29,924][dino.trainer][INFO] - EPOCH 4 DONE
+[2024-11-21 09:18:29,925][dino.trainer][INFO] - Loss: 8.31776525
+[2024-11-21 09:18:29,925][dino.trainer][INFO] - Student Entropy: 8.31776617
+[2024-11-21 09:18:29,925][dino.trainer][INFO] - Teacher Entropy: 8.31776619
+[2024-11-21 09:18:29,925][dino.trainer][INFO] - KL Divergence: 0.00000042
+[2024-11-21 09:18:29,925][dino.trainer][INFO] - ----------------------------------------------------------------------------------------------------
+[2024-11-21 09:18:29,925][dino.trainer][INFO] - EPOCH 5
+[2024-11-21 09:47:02,538][dino.trainer][INFO] - batch 1000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00010250 - teacher momentum 0.9960 - time 1712.61s
+[2024-11-21 10:15:16,764][dino.trainer][INFO] - batch 2000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00010499 - teacher momentum 0.9960 - time 3406.83s
+[2024-11-21 10:43:18,476][dino.trainer][INFO] - batch 3000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00010749 - teacher momentum 0.9960 - time 5088.55s
+[2024-11-21 11:11:32,269][dino.trainer][INFO] - batch 4000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00010999 - teacher momentum 0.9960 - time 6782.34s
+[2024-11-21 11:24:02,667][dino.trainer][INFO] - ----------------------------------------------------------------------------------------------------
+[2024-11-21 11:24:02,668][dino.trainer][WARNING] - Manually Interrupted Training!
+[2024-11-21 11:24:02,669][dino.trainer][INFO] - ----------------------------------------------------------------------------------------------------
+[2024-11-21 11:24:02,670][dino.trainer][INFO] - Finished Training
+[2024-11-21 11:24:02,670][dino.entry_points.train][INFO] - Saving model to /vol/tmp/dobbersc/PyCharmProjects/dino/outputs/2024-11-20/13-27-49/student.pt
+[2024-11-21 11:24:02,939][dino.entry_points.train][INFO] - Saving model to /vol/tmp/dobbersc/PyCharmProjects/dino/outputs/2024-11-20/13-27-49/teacher.pt

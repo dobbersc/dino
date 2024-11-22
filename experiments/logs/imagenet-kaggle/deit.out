@@ -1,0 +1,438 @@
+cmd: train
+finetune:
+  model_dir: /models
+  model_tag: default
+  base_lr: 0.001
+  backbone_lr: 1.0e-05
+  num_epochs: 1
+  batch_size: 32
+  mode: LINEAR_PROBE
+  dataset:
+    type_: IMAGE_FOLDER
+    transform: DEFAULT
+    data_dir: ${hydra:runtime.cwd}/data/tiny-imagenet-200/train
+  backbone:
+    model_type: VIT_DINO_S
+    pretrained_weights: null
+  head:
+    model_type: LINEAR
+    output_dim: 1000
+    pretrained_weights: null
+verbose: true
+log_dir: /logs
+
+[2024-11-20 13:27:16,787][dino.entry_points.train][INFO] - /vol/tmp/dobbersc-pub/imagenet-kaggle/ILSVRC/Data/CLS-LOC/train; model_name='deit_small_patch16_224'; pretrained=False
+[2024-11-20 13:27:20,222][dino.trainer][INFO] - ----------------------------------------------------------------------------------------------------
+[2024-11-20 13:27:20,222][dino.trainer][INFO] - Training Model
+[2024-11-20 13:27:20,222][dino.trainer][INFO] - ----------------------------------------------------------------------------------------------------
+[2024-11-20 13:27:20,222][dino.trainer][INFO] - ModelWithHead(
+  (model): VisionTransformer(
+    (patch_embed): PatchEmbed(
+      (proj): Conv2d(3, 384, kernel_size=(16, 16), stride=(16, 16))
+      (norm): Identity()
+    )
+    (pos_drop): Dropout(p=0.0, inplace=False)
+    (patch_drop): Identity()
+    (norm_pre): Identity()
+    (blocks): Sequential(
+      (0): Block(
+        (norm1): LayerNorm((384,), eps=1e-06, elementwise_affine=True)
+        (attn): Attention(
+          (qkv): Linear(in_features=384, out_features=1152, bias=True)
+          (q_norm): Identity()
+          (k_norm): Identity()
+          (attn_drop): Dropout(p=0.0, inplace=False)
+          (proj): Linear(in_features=384, out_features=384, bias=True)
+          (proj_drop): Dropout(p=0.0, inplace=False)
+        )
+        (ls1): Identity()
+        (drop_path1): Identity()
+        (norm2): LayerNorm((384,), eps=1e-06, elementwise_affine=True)
+        (mlp): Mlp(
+          (fc1): Linear(in_features=384, out_features=1536, bias=True)
+          (act): GELU(approximate='none')
+          (drop1): Dropout(p=0.0, inplace=False)
+          (norm): Identity()
+          (fc2): Linear(in_features=1536, out_features=384, bias=True)
+          (drop2): Dropout(p=0.0, inplace=False)
+        )
+        (ls2): Identity()
+        (drop_path2): Identity()
+      )
+      (1): Block(
+        (norm1): LayerNorm((384,), eps=1e-06, elementwise_affine=True)
+        (attn): Attention(
+          (qkv): Linear(in_features=384, out_features=1152, bias=True)
+          (q_norm): Identity()
+          (k_norm): Identity()
+          (attn_drop): Dropout(p=0.0, inplace=False)
+          (proj): Linear(in_features=384, out_features=384, bias=True)
+          (proj_drop): Dropout(p=0.0, inplace=False)
+        )
+        (ls1): Identity()
+        (drop_path1): Identity()
+        (norm2): LayerNorm((384,), eps=1e-06, elementwise_affine=True)
+        (mlp): Mlp(
+          (fc1): Linear(in_features=384, out_features=1536, bias=True)
+          (act): GELU(approximate='none')
+          (drop1): Dropout(p=0.0, inplace=False)
+          (norm): Identity()
+          (fc2): Linear(in_features=1536, out_features=384, bias=True)
+          (drop2): Dropout(p=0.0, inplace=False)
+        )
+        (ls2): Identity()
+        (drop_path2): Identity()
+      )
+      (2): Block(
+        (norm1): LayerNorm((384,), eps=1e-06, elementwise_affine=True)
+        (attn): Attention(
+          (qkv): Linear(in_features=384, out_features=1152, bias=True)
+          (q_norm): Identity()
+          (k_norm): Identity()
+          (attn_drop): Dropout(p=0.0, inplace=False)
+          (proj): Linear(in_features=384, out_features=384, bias=True)
+          (proj_drop): Dropout(p=0.0, inplace=False)
+        )
+        (ls1): Identity()
+        (drop_path1): Identity()
+        (norm2): LayerNorm((384,), eps=1e-06, elementwise_affine=True)
+        (mlp): Mlp(
+          (fc1): Linear(in_features=384, out_features=1536, bias=True)
+          (act): GELU(approximate='none')
+          (drop1): Dropout(p=0.0, inplace=False)
+          (norm): Identity()
+          (fc2): Linear(in_features=1536, out_features=384, bias=True)
+          (drop2): Dropout(p=0.0, inplace=False)
+        )
+        (ls2): Identity()
+        (drop_path2): Identity()
+      )
+      (3): Block(
+        (norm1): LayerNorm((384,), eps=1e-06, elementwise_affine=True)
+        (attn): Attention(
+          (qkv): Linear(in_features=384, out_features=1152, bias=True)
+          (q_norm): Identity()
+          (k_norm): Identity()
+          (attn_drop): Dropout(p=0.0, inplace=False)
+          (proj): Linear(in_features=384, out_features=384, bias=True)
+          (proj_drop): Dropout(p=0.0, inplace=False)
+        )
+        (ls1): Identity()
+        (drop_path1): Identity()
+        (norm2): LayerNorm((384,), eps=1e-06, elementwise_affine=True)
+        (mlp): Mlp(
+          (fc1): Linear(in_features=384, out_features=1536, bias=True)
+          (act): GELU(approximate='none')
+          (drop1): Dropout(p=0.0, inplace=False)
+          (norm): Identity()
+          (fc2): Linear(in_features=1536, out_features=384, bias=True)
+          (drop2): Dropout(p=0.0, inplace=False)
+        )
+        (ls2): Identity()
+        (drop_path2): Identity()
+      )
+      (4): Block(
+        (norm1): LayerNorm((384,), eps=1e-06, elementwise_affine=True)
+        (attn): Attention(
+          (qkv): Linear(in_features=384, out_features=1152, bias=True)
+          (q_norm): Identity()
+          (k_norm): Identity()
+          (attn_drop): Dropout(p=0.0, inplace=False)
+          (proj): Linear(in_features=384, out_features=384, bias=True)
+          (proj_drop): Dropout(p=0.0, inplace=False)
+        )
+        (ls1): Identity()
+        (drop_path1): Identity()
+        (norm2): LayerNorm((384,), eps=1e-06, elementwise_affine=True)
+        (mlp): Mlp(
+          (fc1): Linear(in_features=384, out_features=1536, bias=True)
+          (act): GELU(approximate='none')
+          (drop1): Dropout(p=0.0, inplace=False)
+          (norm): Identity()
+          (fc2): Linear(in_features=1536, out_features=384, bias=True)
+          (drop2): Dropout(p=0.0, inplace=False)
+        )
+        (ls2): Identity()
+        (drop_path2): Identity()
+      )
+      (5): Block(
+        (norm1): LayerNorm((384,), eps=1e-06, elementwise_affine=True)
+        (attn): Attention(
+          (qkv): Linear(in_features=384, out_features=1152, bias=True)
+          (q_norm): Identity()
+          (k_norm): Identity()
+          (attn_drop): Dropout(p=0.0, inplace=False)
+          (proj): Linear(in_features=384, out_features=384, bias=True)
+          (proj_drop): Dropout(p=0.0, inplace=False)
+        )
+        (ls1): Identity()
+        (drop_path1): Identity()
+        (norm2): LayerNorm((384,), eps=1e-06, elementwise_affine=True)
+        (mlp): Mlp(
+          (fc1): Linear(in_features=384, out_features=1536, bias=True)
+          (act): GELU(approximate='none')
+          (drop1): Dropout(p=0.0, inplace=False)
+          (norm): Identity()
+          (fc2): Linear(in_features=1536, out_features=384, bias=True)
+          (drop2): Dropout(p=0.0, inplace=False)
+        )
+        (ls2): Identity()
+        (drop_path2): Identity()
+      )
+      (6): Block(
+        (norm1): LayerNorm((384,), eps=1e-06, elementwise_affine=True)
+        (attn): Attention(
+          (qkv): Linear(in_features=384, out_features=1152, bias=True)
+          (q_norm): Identity()
+          (k_norm): Identity()
+          (attn_drop): Dropout(p=0.0, inplace=False)
+          (proj): Linear(in_features=384, out_features=384, bias=True)
+          (proj_drop): Dropout(p=0.0, inplace=False)
+        )
+        (ls1): Identity()
+        (drop_path1): Identity()
+        (norm2): LayerNorm((384,), eps=1e-06, elementwise_affine=True)
+        (mlp): Mlp(
+          (fc1): Linear(in_features=384, out_features=1536, bias=True)
+          (act): GELU(approximate='none')
+          (drop1): Dropout(p=0.0, inplace=False)
+          (norm): Identity()
+          (fc2): Linear(in_features=1536, out_features=384, bias=True)
+          (drop2): Dropout(p=0.0, inplace=False)
+        )
+        (ls2): Identity()
+        (drop_path2): Identity()
+      )
+      (7): Block(
+        (norm1): LayerNorm((384,), eps=1e-06, elementwise_affine=True)
+        (attn): Attention(
+          (qkv): Linear(in_features=384, out_features=1152, bias=True)
+          (q_norm): Identity()
+          (k_norm): Identity()
+          (attn_drop): Dropout(p=0.0, inplace=False)
+          (proj): Linear(in_features=384, out_features=384, bias=True)
+          (proj_drop): Dropout(p=0.0, inplace=False)
+        )
+        (ls1): Identity()
+        (drop_path1): Identity()
+        (norm2): LayerNorm((384,), eps=1e-06, elementwise_affine=True)
+        (mlp): Mlp(
+          (fc1): Linear(in_features=384, out_features=1536, bias=True)
+          (act): GELU(approximate='none')
+          (drop1): Dropout(p=0.0, inplace=False)
+          (norm): Identity()
+          (fc2): Linear(in_features=1536, out_features=384, bias=True)
+          (drop2): Dropout(p=0.0, inplace=False)
+        )
+        (ls2): Identity()
+        (drop_path2): Identity()
+      )
+      (8): Block(
+        (norm1): LayerNorm((384,), eps=1e-06, elementwise_affine=True)
+        (attn): Attention(
+          (qkv): Linear(in_features=384, out_features=1152, bias=True)
+          (q_norm): Identity()
+          (k_norm): Identity()
+          (attn_drop): Dropout(p=0.0, inplace=False)
+          (proj): Linear(in_features=384, out_features=384, bias=True)
+          (proj_drop): Dropout(p=0.0, inplace=False)
+        )
+        (ls1): Identity()
+        (drop_path1): Identity()
+        (norm2): LayerNorm((384,), eps=1e-06, elementwise_affine=True)
+        (mlp): Mlp(
+          (fc1): Linear(in_features=384, out_features=1536, bias=True)
+          (act): GELU(approximate='none')
+          (drop1): Dropout(p=0.0, inplace=False)
+          (norm): Identity()
+          (fc2): Linear(in_features=1536, out_features=384, bias=True)
+          (drop2): Dropout(p=0.0, inplace=False)
+        )
+        (ls2): Identity()
+        (drop_path2): Identity()
+      )
+      (9): Block(
+        (norm1): LayerNorm((384,), eps=1e-06, elementwise_affine=True)
+        (attn): Attention(
+          (qkv): Linear(in_features=384, out_features=1152, bias=True)
+          (q_norm): Identity()
+          (k_norm): Identity()
+          (attn_drop): Dropout(p=0.0, inplace=False)
+          (proj): Linear(in_features=384, out_features=384, bias=True)
+          (proj_drop): Dropout(p=0.0, inplace=False)
+        )
+        (ls1): Identity()
+        (drop_path1): Identity()
+        (norm2): LayerNorm((384,), eps=1e-06, elementwise_affine=True)
+        (mlp): Mlp(
+          (fc1): Linear(in_features=384, out_features=1536, bias=True)
+          (act): GELU(approximate='none')
+          (drop1): Dropout(p=0.0, inplace=False)
+          (norm): Identity()
+          (fc2): Linear(in_features=1536, out_features=384, bias=True)
+          (drop2): Dropout(p=0.0, inplace=False)
+        )
+        (ls2): Identity()
+        (drop_path2): Identity()
+      )
+      (10): Block(
+        (norm1): LayerNorm((384,), eps=1e-06, elementwise_affine=True)
+        (attn): Attention(
+          (qkv): Linear(in_features=384, out_features=1152, bias=True)
+          (q_norm): Identity()
+          (k_norm): Identity()
+          (attn_drop): Dropout(p=0.0, inplace=False)
+          (proj): Linear(in_features=384, out_features=384, bias=True)
+          (proj_drop): Dropout(p=0.0, inplace=False)
+        )
+        (ls1): Identity()
+        (drop_path1): Identity()
+        (norm2): LayerNorm((384,), eps=1e-06, elementwise_affine=True)
+        (mlp): Mlp(
+          (fc1): Linear(in_features=384, out_features=1536, bias=True)
+          (act): GELU(approximate='none')
+          (drop1): Dropout(p=0.0, inplace=False)
+          (norm): Identity()
+          (fc2): Linear(in_features=1536, out_features=384, bias=True)
+          (drop2): Dropout(p=0.0, inplace=False)
+        )
+        (ls2): Identity()
+        (drop_path2): Identity()
+      )
+      (11): Block(
+        (norm1): LayerNorm((384,), eps=1e-06, elementwise_affine=True)
+        (attn): Attention(
+          (qkv): Linear(in_features=384, out_features=1152, bias=True)
+          (q_norm): Identity()
+          (k_norm): Identity()
+          (attn_drop): Dropout(p=0.0, inplace=False)
+          (proj): Linear(in_features=384, out_features=384, bias=True)
+          (proj_drop): Dropout(p=0.0, inplace=False)
+        )
+        (ls1): Identity()
+        (drop_path1): Identity()
+        (norm2): LayerNorm((384,), eps=1e-06, elementwise_affine=True)
+        (mlp): Mlp(
+          (fc1): Linear(in_features=384, out_features=1536, bias=True)
+          (act): GELU(approximate='none')
+          (drop1): Dropout(p=0.0, inplace=False)
+          (norm): Identity()
+          (fc2): Linear(in_features=1536, out_features=384, bias=True)
+          (drop2): Dropout(p=0.0, inplace=False)
+        )
+        (ls2): Identity()
+        (drop_path2): Identity()
+      )
+    )
+    (norm): LayerNorm((384,), eps=1e-06, elementwise_affine=True)
+    (fc_norm): Identity()
+    (head_drop): Dropout(p=0.0, inplace=False)
+    (head): Identity()
+  )
+  (head): DINOHead(
+    (mlp): Sequential(
+      (0): Linear(in_features=384, out_features=2048, bias=True)
+      (1): GELU(approximate='none')
+      (2): Linear(in_features=2048, out_features=2048, bias=True)
+      (3): GELU(approximate='none')
+      (4): Linear(in_features=2048, out_features=256, bias=True)
+    )
+    (norm): L2NormLayer()
+    (last_layer): Linear(in_features=256, out_features=4096, bias=False)
+  )
+)
+[2024-11-20 13:27:20,224][dino.trainer][INFO] - ----------------------------------------------------------------------------------------------------
+[2024-11-20 13:27:20,224][dino.trainer][INFO] - Training Hyperparameters
+[2024-11-20 13:27:20,224][dino.trainer][INFO] -  - max_epochs: 100
+[2024-11-20 13:27:20,224][dino.trainer][INFO] -  - batch_size: 128
+[2024-11-20 13:27:20,224][dino.trainer][INFO] - ----------------------------------------------------------------------------------------------------
+[2024-11-20 13:27:20,224][dino.trainer][INFO] - Computational Parameters:
+[2024-11-20 13:27:20,224][dino.trainer][INFO] -  - num_workers: 8
+[2024-11-20 13:27:20,224][dino.trainer][INFO] -  - device: device(type='cuda')
+[2024-11-20 13:27:20,224][dino.trainer][INFO] - ----------------------------------------------------------------------------------------------------
+[2024-11-20 13:27:20,224][dino.trainer][INFO] - Dataset Information:
+[2024-11-20 13:27:20,224][dino.trainer][INFO] -  - train: 1281167 data points
+[2024-11-20 13:27:20,224][dino.trainer][INFO] - ----------------------------------------------------------------------------------------------------
+[2024-11-20 13:27:20,225][dino.trainer][INFO] - EPOCH 1
+[2024-11-20 14:01:36,343][dino.trainer][INFO] - batch 1000/10009 - loss 8.4111 - student_entropy 8.2085 - teacher_entropy 7.9591 - kl_divergence 0.4520 - lr 0.00000250 - teacher momentum 0.9960 - time 2056.12s
+[2024-11-20 14:33:12,446][dino.trainer][INFO] - batch 2000/10009 - loss 8.3703 - student_entropy 8.2579 - teacher_entropy 8.1368 - kl_divergence 0.2334 - lr 0.00000499 - teacher momentum 0.9960 - time 3952.22s
+[2024-11-20 15:04:07,290][dino.trainer][INFO] - batch 3000/10009 - loss 8.3528 - student_entropy 8.2778 - teacher_entropy 8.1970 - kl_divergence 0.1558 - lr 0.00000749 - teacher momentum 0.9960 - time 5807.06s
+[2024-11-20 15:33:08,533][dino.trainer][INFO] - batch 4000/10009 - loss 8.3441 - student_entropy 8.2878 - teacher_entropy 8.2272 - kl_divergence 0.1169 - lr 0.00000999 - teacher momentum 0.9960 - time 7548.31s
+[2024-11-20 16:01:58,425][dino.trainer][INFO] - batch 5000/10009 - loss 8.3388 - student_entropy 8.2938 - teacher_entropy 8.2453 - kl_divergence 0.0935 - lr 0.00001249 - teacher momentum 0.9960 - time 9278.20s
+[2024-11-20 16:31:00,535][dino.trainer][INFO] - batch 6000/10009 - loss 8.3353 - student_entropy 8.2978 - teacher_entropy 8.2574 - kl_divergence 0.0779 - lr 0.00001498 - teacher momentum 0.9960 - time 11020.31s
+[2024-11-20 16:59:52,704][dino.trainer][INFO] - batch 7000/10009 - loss 8.3328 - student_entropy 8.3006 - teacher_entropy 8.2660 - kl_divergence 0.0668 - lr 0.00001748 - teacher momentum 0.9960 - time 12752.48s
+[2024-11-20 17:28:46,714][dino.trainer][INFO] - batch 8000/10009 - loss 8.3309 - student_entropy 8.3028 - teacher_entropy 8.2725 - kl_divergence 0.0585 - lr 0.00001998 - teacher momentum 0.9960 - time 14486.49s
+[2024-11-20 17:57:39,802][dino.trainer][INFO] - batch 9000/10009 - loss 8.3295 - student_entropy 8.3044 - teacher_entropy 8.2775 - kl_divergence 0.0520 - lr 0.00002248 - teacher momentum 0.9960 - time 16219.58s
+[2024-11-20 18:26:29,238][dino.trainer][INFO] - batch 10000/10009 - loss 8.3283 - student_entropy 8.3058 - teacher_entropy 8.2815 - kl_divergence 0.0468 - lr 0.00002498 - teacher momentum 0.9960 - time 17949.01s
+[2024-11-20 18:26:43,284][dino.trainer][INFO] - ----------------------------------------------------------------------------------------------------
+[2024-11-20 18:26:43,285][dino.trainer][INFO] - EPOCH 1 DONE
+[2024-11-20 18:26:43,285][dino.trainer][INFO] - Loss: 8.32828093
+[2024-11-20 18:26:43,285][dino.trainer][INFO] - Student Entropy: 8.30578155
+[2024-11-20 18:26:43,285][dino.trainer][INFO] - Teacher Entropy: 8.28155139
+[2024-11-20 18:26:43,285][dino.trainer][INFO] - KL Divergence: 0.04673000
+[2024-11-20 18:26:43,285][dino.trainer][INFO] - ----------------------------------------------------------------------------------------------------
+[2024-11-20 18:26:43,285][dino.trainer][INFO] - EPOCH 2
+[2024-11-20 18:55:37,676][dino.trainer][INFO] - batch 1000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00002750 - teacher momentum 0.9960 - time 1734.39s
+[2024-11-20 19:24:11,915][dino.trainer][INFO] - batch 2000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00002999 - teacher momentum 0.9960 - time 3448.62s
+[2024-11-20 19:52:59,793][dino.trainer][INFO] - batch 3000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00003249 - teacher momentum 0.9960 - time 5176.50s
+[2024-11-20 20:21:52,175][dino.trainer][INFO] - batch 4000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00003499 - teacher momentum 0.9960 - time 6908.88s
+[2024-11-20 20:50:55,950][dino.trainer][INFO] - batch 5000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00003749 - teacher momentum 0.9960 - time 8652.66s
+[2024-11-20 21:19:45,541][dino.trainer][INFO] - batch 6000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00003998 - teacher momentum 0.9960 - time 10382.25s
+[2024-11-20 21:48:19,950][dino.trainer][INFO] - batch 7000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00004248 - teacher momentum 0.9960 - time 12096.66s
+[2024-11-20 22:17:20,722][dino.trainer][INFO] - batch 8000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00004498 - teacher momentum 0.9960 - time 13837.43s
+[2024-11-20 22:46:03,633][dino.trainer][INFO] - batch 9000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00004748 - teacher momentum 0.9960 - time 15560.34s
+[2024-11-20 23:20:18,574][dino.trainer][INFO] - batch 10000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00004998 - teacher momentum 0.9960 - time 17615.28s
+[2024-11-20 23:20:41,039][dino.trainer][INFO] - ----------------------------------------------------------------------------------------------------
+[2024-11-20 23:20:41,039][dino.trainer][INFO] - EPOCH 2 DONE
+[2024-11-20 23:20:41,039][dino.trainer][INFO] - Loss: 8.31776543
+[2024-11-20 23:20:41,039][dino.trainer][INFO] - Student Entropy: 8.31776579
+[2024-11-20 23:20:41,039][dino.trainer][INFO] - Teacher Entropy: 8.31776611
+[2024-11-20 23:20:41,039][dino.trainer][INFO] - KL Divergence: 0.00000099
+[2024-11-20 23:20:41,039][dino.trainer][INFO] - ----------------------------------------------------------------------------------------------------
+[2024-11-20 23:20:41,039][dino.trainer][INFO] - EPOCH 3
+[2024-11-20 23:49:42,835][dino.trainer][INFO] - batch 1000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00005250 - teacher momentum 0.9960 - time 1741.79s
+[2024-11-21 00:18:22,820][dino.trainer][INFO] - batch 2000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00005499 - teacher momentum 0.9960 - time 3461.78s
+[2024-11-21 00:58:33,441][dino.trainer][INFO] - batch 3000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00005749 - teacher momentum 0.9960 - time 5872.40s
+[2024-11-21 01:35:33,182][dino.trainer][INFO] - batch 4000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00005999 - teacher momentum 0.9960 - time 8092.14s
+[2024-11-21 02:08:55,057][dino.trainer][INFO] - batch 5000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00006249 - teacher momentum 0.9960 - time 10094.02s
+[2024-11-21 02:37:22,740][dino.trainer][INFO] - batch 6000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00006498 - teacher momentum 0.9960 - time 11801.70s
+[2024-11-21 03:05:39,290][dino.trainer][INFO] - batch 7000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00006748 - teacher momentum 0.9960 - time 13498.25s
+[2024-11-21 03:34:08,766][dino.trainer][INFO] - batch 8000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00006998 - teacher momentum 0.9960 - time 15207.72s
+[2024-11-21 04:02:33,656][dino.trainer][INFO] - batch 9000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00007248 - teacher momentum 0.9960 - time 16912.61s
+[2024-11-21 04:30:50,040][dino.trainer][INFO] - batch 10000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00007498 - teacher momentum 0.9960 - time 18609.00s
+[2024-11-21 04:31:09,296][dino.trainer][INFO] - ----------------------------------------------------------------------------------------------------
+[2024-11-21 04:31:09,296][dino.trainer][INFO] - EPOCH 3 DONE
+[2024-11-21 04:31:09,296][dino.trainer][INFO] - Loss: 8.31776544
+[2024-11-21 04:31:09,297][dino.trainer][INFO] - Student Entropy: 8.31776587
+[2024-11-21 04:31:09,297][dino.trainer][INFO] - Teacher Entropy: 8.31776619
+[2024-11-21 04:31:09,297][dino.trainer][INFO] - KL Divergence: 0.00000064
+[2024-11-21 04:31:09,297][dino.trainer][INFO] - ----------------------------------------------------------------------------------------------------
+[2024-11-21 04:31:09,297][dino.trainer][INFO] - EPOCH 4
+[2024-11-21 04:59:56,699][dino.trainer][INFO] - batch 1000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00007750 - teacher momentum 0.9960 - time 1727.40s
+[2024-11-21 05:28:31,558][dino.trainer][INFO] - batch 2000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00007999 - teacher momentum 0.9960 - time 3442.26s
+[2024-11-21 05:56:58,463][dino.trainer][INFO] - batch 3000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00008249 - teacher momentum 0.9960 - time 5149.16s
+[2024-11-21 06:25:22,285][dino.trainer][INFO] - batch 4000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00008499 - teacher momentum 0.9960 - time 6852.99s
+[2024-11-21 06:53:52,436][dino.trainer][INFO] - batch 5000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00008749 - teacher momentum 0.9960 - time 8563.14s
+[2024-11-21 07:22:17,610][dino.trainer][INFO] - batch 6000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00008998 - teacher momentum 0.9960 - time 10268.31s
+[2024-11-21 07:50:38,917][dino.trainer][INFO] - batch 7000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00009248 - teacher momentum 0.9960 - time 11969.62s
+[2024-11-21 08:18:42,728][dino.trainer][INFO] - batch 8000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00009498 - teacher momentum 0.9960 - time 13653.43s
+[2024-11-21 08:47:06,422][dino.trainer][INFO] - batch 9000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00009748 - teacher momentum 0.9960 - time 15357.12s
+[2024-11-21 09:15:23,751][dino.trainer][INFO] - batch 10000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00009998 - teacher momentum 0.9960 - time 17054.45s
+[2024-11-21 09:15:39,182][dino.trainer][INFO] - ----------------------------------------------------------------------------------------------------
+[2024-11-21 09:15:39,183][dino.trainer][INFO] - EPOCH 4 DONE
+[2024-11-21 09:15:39,183][dino.trainer][INFO] - Loss: 8.31776544
+[2024-11-21 09:15:39,183][dino.trainer][INFO] - Student Entropy: 8.31776598
+[2024-11-21 09:15:39,183][dino.trainer][INFO] - Teacher Entropy: 8.31776619
+[2024-11-21 09:15:39,183][dino.trainer][INFO] - KL Divergence: 0.00000063
+[2024-11-21 09:15:39,183][dino.trainer][INFO] - ----------------------------------------------------------------------------------------------------
+[2024-11-21 09:15:39,183][dino.trainer][INFO] - EPOCH 5
+[2024-11-21 09:44:21,080][dino.trainer][INFO] - batch 1000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00010250 - teacher momentum 0.9960 - time 1721.89s
+[2024-11-21 10:12:44,684][dino.trainer][INFO] - batch 2000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00010499 - teacher momentum 0.9960 - time 3425.50s
+[2024-11-21 10:41:13,411][dino.trainer][INFO] - batch 3000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00010749 - teacher momentum 0.9960 - time 5134.22s
+[2024-11-21 11:09:40,593][dino.trainer][INFO] - batch 4000/10009 - loss 8.3178 - student_entropy 8.3178 - teacher_entropy 8.3178 - kl_divergence 0.0000 - lr 0.00010999 - teacher momentum 0.9960 - time 6841.41s
+[2024-11-21 11:23:26,794][dino.trainer][INFO] - ----------------------------------------------------------------------------------------------------
+[2024-11-21 11:23:26,795][dino.trainer][WARNING] - Manually Interrupted Training!
+[2024-11-21 11:23:26,796][dino.trainer][INFO] - ----------------------------------------------------------------------------------------------------
+[2024-11-21 11:23:26,796][dino.trainer][INFO] - Finished Training
+[2024-11-21 11:23:26,797][dino.entry_points.train][INFO] - Saving model to /vol/tmp/dobbersc/PyCharmProjects/dino/outputs/2024-11-20/13-27-15/student.pt
+[2024-11-21 11:23:27,024][dino.entry_points.train][INFO] - Saving model to /vol/tmp/dobbersc/PyCharmProjects/dino/outputs/2024-11-20/13-27-15/teacher.pt
