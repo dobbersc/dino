@@ -41,17 +41,43 @@ class TestKnnEvaluator(unittest.TestCase):
             ],
         )
 
-        self.val_labels = torch.Tensor([1, 2, 1])
+        self.train_loader = DataLoader(
+            TensorDataset(self.train_input_tensors, self.train_labels),
+            batch_size=2,
+        )
 
-        self.train_dataset = TensorDataset(self.train_input_tensors, self.train_labels)
-        self.val_dataset = TensorDataset(self.val_input_tensors, self.val_labels)
-        self.train_loader = DataLoader(self.train_dataset, batch_size=2)
-        self.val_loader = DataLoader(self.val_dataset, batch_size=1)
+        self.val_loader_1 = DataLoader(
+            TensorDataset(
+                self.val_input_tensors,
+                torch.Tensor([2, 3, 3]),  # expecting 33.33% accuracy
+            ),
+            batch_size=1,
+        )
+
+        self.val_loader_2 = DataLoader(
+            TensorDataset(
+                self.val_input_tensors,
+                torch.Tensor([1, 2, 1]),  # expecting 66.66% accuracy
+            ),
+            batch_size=1,
+        )
+
+        self.val_loader_3 = DataLoader(
+            TensorDataset(
+                self.val_input_tensors,
+                torch.Tensor([1, 2, 3]),  # expecting 100% accuracy
+            ),
+            batch_size=1,
+        )
 
         self.model = self._MockModel()
 
     def test_knn_evaluator(self):
-        evaluator = KNNEvaluator(self.val_loader, self.train_loader, self.model)
-        accuracy = evaluator.evaluate(k=1)
+        evaluator = KNNEvaluator(self.val_loader_1, self.train_loader, self.model)
+        assert evaluator.evaluate(k=1) == approx(0.33333, rel=1e-3)
 
-        assert accuracy == approx(0.66666, rel=1e-3)
+        evaluator = KNNEvaluator(self.val_loader_2, self.train_loader, self.model)
+        assert evaluator.evaluate(k=1) == approx(0.66666, rel=1e-3)
+
+        evaluator = KNNEvaluator(self.val_loader_3, self.train_loader, self.model)
+        assert evaluator.evaluate(k=1) == approx(1, rel=1e-3)
