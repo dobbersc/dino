@@ -2,4 +2,4 @@ defaults:
   - base_backbone
 
 model_type: DEIT_S
-pretrained_weights: ${hydra:runtime.cwd}/models/deit-student.pt
+pretrained_weights: null

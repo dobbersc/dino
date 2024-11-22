@@ -21,7 +21,6 @@ COMMAND=(
     "evaluate=knn"
     "evaluate.dataset.data_dir=$DATA_TARGET_DIR" 
     "backbone@evaluate.backbone=vit_deit_imagenet" 
-    "evaluate.backbone.pretrained_weights=/home/pml20/dino/models/deit-student.pt"
 )
 
 # Combine all elements into a single string
