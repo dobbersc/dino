@@ -36,7 +36,7 @@ pip install git+https://github.com/dobbersc/dino@master
 
 #### Experiments
 
-Our experiments cover the following entry points:
+Our experiments cover the training, fine-tuning and evaluation entry points. The following example commands illustrate their usage: 
 
 - Training: `dino cmd=train train.dataset_dir=/path/to/dataset/train/`
 - Fine-Tuning: `dino cmd=finetune dataset@finetune.dataset=imagenet finetune.dataset.data_dir=/path/to/dataset/train/`
