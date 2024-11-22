@@ -42,7 +42,7 @@ Our experiments cover the following entry points:
 - Fine-Tuning: `dino cmd=finetune dataset@finetune.dataset=imagenet finetune.dataset.data_dir=/path/to/dataset/train/`
 - Evaluation: `dino cmd=evaluate evaluate=knn dataset@evaluate.dataset=imagenet evaluate.dataset.data_dir=/path/to/dataset/test`
 
-*Note: We provide SLURM scripts for each pipeline step in the `script` directory.*
+*Note: We provide some SLURM scripts in the `script` directory.*
 
 #### Development
 
