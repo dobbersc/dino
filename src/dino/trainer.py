@@ -60,7 +60,7 @@ class DINOTrainer:
         logger.info(" - train: %d data points", len(self.view_dataset))
 
     @staticmethod
-    def _multi_forward(model: nn.Module, views: list[Tensor]) -> Tensor:
+    def multi_forward(model: nn.Module, views: list[Tensor]) -> Tensor:
         """Performs a forward pass separately for each consecutive group of view resolutions.
 
         Since this function forwards each consecutive group of view resolutions,
@@ -78,15 +78,19 @@ class DINOTrainer:
             msg: str = "The 'views' list must contain at least one view for the forward pass."
             raise ValueError(msg)
 
-        # Each output is of shape [batch_size * len(views_group), output_size]
+        # Each output is of shape [len(views_group) * batch_size, output_size].
+        # Note: The concatenation of the views in the respective group
+        # organizes the batched view's dimensions as view first and batch second.
         outputs: list[Tensor] = [
             model(torch.cat(tuple(views_group), dim=0))
             for _, views_group in itertools.groupby(views, key=lambda view: view.size()[-2:])
         ]
 
-        # Reshape outputs to [batch_size, #views, output_size]
+        # Reshape outputs to [batch_size, #views, output_size].
+        # To preserve the correctness of the views under the note above,
+        # we first reshape to [#views, batch_size, output_size] and transpose afterwards.
         batch_size: int = views[0].size(dim=0)
-        return torch.cat(outputs, dim=0).reshape(batch_size, len(views), -1)
+        return torch.cat(outputs, dim=0).reshape(len(views), batch_size, -1).transpose(0, 1)
 
     @torch.no_grad()
     def _update_teacher(self, teacher_momentum_scheduler: Scheduler[float]) -> None:
@@ -134,9 +138,9 @@ class DINOTrainer:
 
             optimizer.zero_grad()
 
-            student_output: Tensor = self._multi_forward(self.student, global_views + local_views)
+            student_output: Tensor = self.multi_forward(self.student, global_views + local_views)
             with torch.no_grad():
-                teacher_output: Tensor = self._multi_forward(self.teacher, global_views)
+                teacher_output: Tensor = self.multi_forward(self.teacher, global_views)
 
             loss, inspection_metrics = loss_function(student_output, teacher_output, compute_inspection_metrics=True)
             aggregated_loss += loss.item()
