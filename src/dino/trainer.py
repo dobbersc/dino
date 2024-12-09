@@ -215,12 +215,12 @@ class DINOTrainer:
         lr_scheduler: LRScheduler
         if lr_scheduler_class is None:
             # TODO: Make this properly configurable with parameters. This class and kwargs setup is not really nice.
-            milestone: int = 10 * len(data_loader)  # Set milestone to 10 epochs.
+            milestone: int = 10 * len(data_loader) - 1  # Set milestone to 10 epochs.
             lr_scheduler = SequentialLR(
                 optimizer,
                 schedulers=[
                     LinearLR(optimizer, start_factor=1e-6, total_iters=milestone),
-                    CosineAnnealingLR(optimizer, T_max=max_steps, eta_min=1e-6),
+                    CosineAnnealingLR(optimizer, T_max=max_steps - milestone - 1, eta_min=1e-6),
                 ],
                 milestones=[milestone],
             )
