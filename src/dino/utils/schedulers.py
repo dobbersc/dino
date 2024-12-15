@@ -48,8 +48,8 @@ class Scheduler(ABC, Generic[_T]):
 
 
 class ConstantScheduler(Scheduler[_T]):
-    def __init__(self, constant: _T) -> None:
-        super().__init__(max_steps=None)
+    def __init__(self, constant: _T, max_steps: int | None = None) -> None:
+        super().__init__(max_steps=max_steps)
 
         self.constant = constant
 
