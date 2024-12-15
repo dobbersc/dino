@@ -57,6 +57,29 @@ class ConstantScheduler(Scheduler[_T]):
         return self.constant
 
 
+class LinearScheduler(Scheduler[float]):
+
+    def __init__(self, max_steps: int, initial: float, final: float) -> None:
+        """Initializes a LinearScheduler.
+
+        Args:
+            max_steps: The maximum number of steps supported by the scheduler.
+            initial: The initial value of the schedule.
+            final: The final value of the schedule.
+                Note that the scheduler reaches the linear interpolation's final value at step `max_steps - 1`.
+        """
+        super().__init__(max_steps=max_steps)
+
+        self.initial = initial
+        self.final = final
+
+    def get_value(self) -> float:
+        assert self._max_steps is not None
+        t_max: int = self._max_steps - 1
+        offset: float = (self.final - self.initial) * (self.current_step / t_max)
+        return self.initial + offset
+
+
 class CosineScheduler(Scheduler[float]):
     def __init__(self, max_steps: int, initial: float, final: float) -> None:
         """Initializes a CosineScheduler.
