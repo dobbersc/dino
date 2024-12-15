@@ -1,4 +1,7 @@
+import itertools
 from abc import ABC, abstractmethod
+from bisect import bisect_right
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, Generic, TypeVar
 
 import numpy as np
@@ -45,6 +48,69 @@ class Scheduler(ABC, Generic[_T]):
     @property
     def current_step(self) -> int:
         return self._current_step
+
+
+class SequentialScheduler(Scheduler[_T]):
+    """Utility scheduler that enables the sequential execution of multiple schedulers.
+    Milestone points control the exact intervals when the scheduler is active.
+    """
+
+    def __init__(self, schedulers: Sequence[Scheduler[_T]], milestones: Sequence[int]) -> None:
+        """Initializes a SequentialScheduler.
+
+        Args:
+            schedulers: A sequence of chained schedulers.
+            milestones: A sequence of milestones specifying the step after which the next scheduler in the sequence will
+             continue. A scheduler will be active when the step lies in the interval
+             [previous_milestone, current_milestone). For the first scheduler, `previous_milestone = 1` is assumed.
+             Note that the number of schedulers provided must be one more than the number of milestone points
+             to ensure a well-defined schedule.
+        """
+        self.schedulers = schedulers
+        self.milestones = sorted(milestones)
+
+        super().__init__(
+            max_steps=(
+                None if self.schedulers[-1].max_steps is None else self.milestones[-1] + self.schedulers[-1].max_steps
+            ),
+        )
+
+        if len(self.milestones) != len(self.schedulers) - 1:
+            msg: str = (
+                "SequentialScheduler expects the number of schedulers provided to be one more than the number of "
+                f"milestone points. But got number of schedulers {len(self.schedulers)} and "
+                f"number of milestones {len(self.milestones)}."
+            )
+            raise ValueError(msg)
+
+        for (index, scheduler), (previous_milestone, milestone) in zip(
+            enumerate(self.schedulers[:-1]),
+            itertools.pairwise(itertools.chain([0], self.milestones)),
+            strict=True,
+        ):
+            if scheduler.max_steps is not None and scheduler.max_steps < milestone - previous_milestone - 1:
+                msg = (
+                    f"Scheduler at index {index} starting at milestone {previous_milestone} and "
+                    f"ending at before {milestone} exceeds its maximum number of steps ({scheduler.max_steps}) "
+                    f"by {milestone - previous_milestone - scheduler.max_steps - 1} step(s)."
+                )
+                raise ValueError(msg)
+
+    def step(self) -> None:
+        super().step()
+
+        # Only perform a step on the current scheduler if the initial value has been part of the value sequence.
+        # This is the case when the current step is not a milestone due to the schedulers' left-open activity intervals.
+        if self.current_step not in self.milestones:
+            self.current_scheduler.step()
+
+    def get_value(self) -> _T:
+        return self.current_scheduler.get_value()
+
+    @property
+    def current_scheduler(self) -> Scheduler[_T]:
+        index: int = bisect_right(self.milestones, self.current_step)
+        return self.schedulers[index]
 
 
 class ConstantScheduler(Scheduler[_T]):
