@@ -1,8 +1,9 @@
 import itertools
 import logging
 import time
+import typing
 from collections import defaultdict
-from typing import Any
+from typing import Any, Final
 
 import torch
 from torch import Tensor, nn
@@ -20,12 +21,20 @@ from dino.utils.torch import get_module_device
 logger: logging.Logger = logging.getLogger(__name__)
 
 
+@typing.final
+class _Default:
+    pass
+
+
+_DEFAULT: Final[_Default] = _Default()
+
+
 class DINOTrainer:
     def __init__(
         self,
         student: nn.Module,
         teacher: nn.Module,
-        dataset: Dataset[Tensor],
+        view_dataset: Dataset[Tensor],
         local_augmenter: Augmenter | None = None,
         global_augmenter: Augmenter | None = None,
     ) -> None:
@@ -33,7 +42,7 @@ class DINOTrainer:
         self.teacher = teacher
 
         self.view_dataset: ViewDataset = ViewDataset(
-            dataset,
+            view_dataset,
             local_augmenter=DefaultLocalAugmenter() if local_augmenter is None else local_augmenter,
             global_augmenter=DefaultGlobalAugmenter() if global_augmenter is None else global_augmenter,
         )
@@ -120,6 +129,7 @@ class DINOTrainer:
         optimizer: Optimizer,
         loss_function: DistillationLoss,
         lr_scheduler: LRScheduler,
+        weight_decay_scheduler: Scheduler[float] | None,
         teacher_momentum_scheduler: Scheduler[float],
         max_gradient_norm: float,
         device: torch.device,
@@ -135,6 +145,11 @@ class DINOTrainer:
         for batch_index, views in enumerate(data_loader, start=1):
             local_views: list[Tensor] = [local_view.to(device) for local_view in views.local_views]
             global_views: list[Tensor] = [global_view.to(device) for global_view in views.global_views]
+
+            # Set weight decay if it is supported by the optimizer. We only regularize the first parameter group.
+            weight_decay_is_supported: bool = "weight_decay" in optimizer.param_groups[0]
+            if weight_decay_scheduler is not None and weight_decay_is_supported:
+                optimizer.param_groups[0]["weight_decay"] = weight_decay_scheduler.get_value()
 
             optimizer.zero_grad()
 
@@ -152,11 +167,17 @@ class DINOTrainer:
                 inspection_metrics_log: str = " ".join(
                     f"- {key} {value / batch_index:.4f}" for key, value in aggregated_inspection_metrics.items()
                 )
+                weight_decay_log: str = (
+                    f"- weight decay {optimizer.param_groups[0]['weight_decay']:.4f}"
+                    if weight_decay_is_supported
+                    else ""
+                )
                 msg: str = (
                     f"batch {batch_index}/{len(data_loader)}"
                     f" - loss {aggregated_loss / batch_index:.4f}"
                     f" {inspection_metrics_log}"
                     f" - lr {optimizer.param_groups[0]['lr']:.8f}"
+                    f" {weight_decay_log}"
                     f" - teacher momentum {teacher_momentum_scheduler.get_value():.4f}"
                     f" - time {time.time() - start_time:.2f}s"
                 )
@@ -168,6 +189,8 @@ class DINOTrainer:
             optimizer.step()
             lr_scheduler.step()
             loss_function.step()
+            if weight_decay_scheduler is not None:
+                weight_decay_scheduler.step()
 
             self._update_teacher(teacher_momentum_scheduler)
 
@@ -185,6 +208,7 @@ class DINOTrainer:
         optimizer_kwargs: dict[str, Any] | None = None,
         lr_scheduler_class: type[LRScheduler] | None = None,
         lr_scheduler_kwargs: dict[str, Any] | None = None,
+        weight_decay_scheduler: Scheduler[float] | _Default | None = _DEFAULT,
         teacher_momentum: float | Scheduler[float] | None = None,
         max_gradient_norm: float = 3.0,
         num_workers: int = 0,
@@ -231,6 +255,10 @@ class DINOTrainer:
         else:
             lr_scheduler = lr_scheduler_class(optimizer, **(lr_scheduler_kwargs or {}))
 
+        # Initialize the weight decay scheduler.
+        if isinstance(weight_decay_scheduler, _Default):
+            weight_decay_scheduler = CosineScheduler(max_steps=max_steps, initial=0.04, final=0.4)
+
         # Initialize the teacher momentum scheduler.
         if isinstance(teacher_momentum, float):
             teacher_momentum = ConstantScheduler(teacher_momentum)
@@ -256,6 +284,7 @@ class DINOTrainer:
                     optimizer=optimizer,
                     loss_function=loss_function,
                     lr_scheduler=lr_scheduler,
+                    weight_decay_scheduler=weight_decay_scheduler,
                     teacher_momentum_scheduler=teacher_momentum,
                     max_gradient_norm=max_gradient_norm,
                     device=device,

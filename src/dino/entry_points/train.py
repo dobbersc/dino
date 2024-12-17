@@ -97,7 +97,7 @@ def train(cfg: TrainingConfig) -> None:
     trainer: DINOTrainer = DINOTrainer(
         student=student_with_head,
         teacher=teacher_with_head,
-        dataset=dataset,
+        view_dataset=dataset,
     )
     trainer.train(
         max_epochs=100,
@@ -105,10 +105,7 @@ def train(cfg: TrainingConfig) -> None:
         loss_function_kwargs={"output_size": head_output_dim},
         device=detect_device(),
         optimizer_class=AdamW,
-        optimizer_kwargs={
-            "lr": 0.0005 * batch_size / 256,
-            "weight_decay": 0.04,  # Max: 0.4 TODO: Scheduler this as well
-        },
+        optimizer_kwargs={"lr": 0.0005 * batch_size / 256},
         num_workers=8,
     )
 
