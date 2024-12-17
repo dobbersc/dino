@@ -16,9 +16,6 @@ from dino.trainer import DINOTrainer
 from dino.utils.random import set_seed
 from dino.utils.torch import detect_device, save_model
 
-logger = logging.getLogger(__name__)
-
-
 if TYPE_CHECKING:
     from timm.models import ResNet, VisionTransformer
     from torch import Tensor
@@ -31,8 +28,6 @@ logger: logging.Logger = logging.getLogger(__name__)
 class TrainingConfig:
     model_dir: str = str(Path.cwd() / "models")
     model_tag: str | None = None
-
-    # dataset: DatasetConfig = MISSING
     dataset_dir: str = MISSING
 
 
@@ -54,17 +49,19 @@ def train(cfg: TrainingConfig) -> None:
     pretrained: bool = False
     model_name: str = "deit_small_patch16_224"
 
+    student: ResNet | VisionTransformer
+    teacher: ResNet | VisionTransformer
     if "resnet" in model_name:
-        student: ResNet = timm.create_model(model_name, num_classes=0, pretrained=pretrained)
-        teacher: ResNet = timm.create_model(model_name, num_classes=0, pretrained=pretrained)
+        student = timm.create_model(model_name, num_classes=0, pretrained=pretrained)
+        teacher = timm.create_model(model_name, num_classes=0, pretrained=pretrained)
     else:
-        student: VisionTransformer = timm.create_model(
+        student = timm.create_model(
             model_name,
             num_classes=0,
             dynamic_img_size=True,
             pretrained=pretrained,
         )
-        teacher: VisionTransformer = timm.create_model(
+        teacher = timm.create_model(
             model_name,
             num_classes=0,
             dynamic_img_size=True,
