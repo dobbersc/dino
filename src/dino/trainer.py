@@ -128,7 +128,7 @@ class DINOTrainer:
         data_loader: DataLoader[Views],
         optimizer: Optimizer,
         loss_function: DistillationLoss,
-        lr_scheduler: LRScheduler,
+        lr_scheduler: LRScheduler | None,
         weight_decay_scheduler: Scheduler[float] | None,
         teacher_momentum_scheduler: Scheduler[float],
         max_gradient_norm: float,
@@ -187,8 +187,9 @@ class DINOTrainer:
             nn.utils.clip_grad_norm_(self.student.parameters(), max_norm=max_gradient_norm)
 
             optimizer.step()
-            lr_scheduler.step()
             loss_function.step()
+            if lr_scheduler is not None:
+                lr_scheduler.step()
             if weight_decay_scheduler is not None:
                 weight_decay_scheduler.step()
 
@@ -240,9 +241,9 @@ class DINOTrainer:
         optimizer: Optimizer = optimizer_class(self.student.parameters(), **(optimizer_kwargs or {}))
 
         # Initialize the learning rate scheduler.
-        lr_scheduler: LRScheduler
-        if lr_scheduler_class is None:
-            # TODO: Make this properly configurable with parameters. This class and kwargs setup is not really nice.
+        lr_scheduler: LRScheduler | None = None
+        lr_epoch_threshold: float = 25  # Set default lr scheduler if training for sufficient epochs.
+        if lr_scheduler_class is None and max_epochs >= lr_epoch_threshold:
             milestone: int = 10 * len(data_loader) - 1  # Set milestone to 10 epochs.
             lr_scheduler = SequentialLR(
                 optimizer,
@@ -252,7 +253,7 @@ class DINOTrainer:
                 ],
                 milestones=[milestone],
             )
-        else:
+        elif lr_scheduler_class is not None:
             lr_scheduler = lr_scheduler_class(optimizer, **(lr_scheduler_kwargs or {}))
 
         # Initialize the weight decay scheduler.
