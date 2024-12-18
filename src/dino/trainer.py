@@ -14,6 +14,7 @@ from dino import LOG_SEPARATOR
 from dino.augmentation import Augmenter, DefaultGlobalAugmenter, DefaultLocalAugmenter
 from dino.datasets import ViewDataset, Views
 from dino.loss import DINOLoss, DistillationLoss
+from dino.utils.logging import mlflow_log_metrics
 from dino.utils.schedulers import ConstantScheduler, CosineScheduler, Scheduler
 from dino.utils.torch import get_module_device
 
@@ -123,6 +124,9 @@ class DINOTrainer:
         teacher_momentum_scheduler: Scheduler[float],
         max_gradient_norm: float,
         device: torch.device,
+        # necessary to have consistent steps across epochs for mlflow logging:
+        # I have the feeling @Conrad doesn't like this
+        global_batch_index: int,
     ) -> tuple[float, dict[str, float]]:
         self.student.train()
         self.teacher.train()
@@ -162,6 +166,17 @@ class DINOTrainer:
                 )
                 logger.info(msg)
 
+                mlflow_log_metrics(
+                    "train_batch",
+                    {
+                        "loss": aggregated_loss / batch_index,
+                        "lr": optimizer.param_groups[0]["lr"],
+                        "teacher momentum": teacher_momentum_scheduler.get_value(),
+                        **inspection_metrics,
+                    },
+                    global_batch_index,
+                )
+
             loss.backward()
             nn.utils.clip_grad_norm_(self.student.parameters(), max_norm=max_gradient_norm)
 
@@ -170,6 +185,7 @@ class DINOTrainer:
             loss_function.step()
 
             self._update_teacher(teacher_momentum_scheduler)
+            global_batch_index += 1
 
         for key in aggregated_inspection_metrics:
             aggregated_inspection_metrics[key] /= len(data_loader)
@@ -259,6 +275,7 @@ class DINOTrainer:
                     teacher_momentum_scheduler=teacher_momentum,
                     max_gradient_norm=max_gradient_norm,
                     device=device,
+                    global_batch_index=(epoch - 1) * len(data_loader),
                 )
 
                 logger.info(LOG_SEPARATOR)
@@ -267,6 +284,15 @@ class DINOTrainer:
                 for key, value in inspection_metrics.items():
                     name: str = "KL Divergence" if key == "kl_divergence" else key.replace("_", " ").title()
                     logger.info("%s: %.8f", name, value)
+
+                mlflow_log_metrics(
+                    "train_epoch",
+                    {
+                        "loss": loss,
+                        **inspection_metrics,
+                    },
+                    epoch,
+                )
 
         except KeyboardInterrupt:
             logger.info(LOG_SEPARATOR)

@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import hydra
+import mlflow
 from hydra.core.config_store import ConfigStore
 from omegaconf import OmegaConf
 from torch.optim import AdamW
@@ -13,6 +14,7 @@ from torchvision.transforms import v2
 from dino.datasets import DatasetConfig, UnlabelledDataset
 from dino.models import BackboneConfig, HeadConfig, load_model_with_head
 from dino.trainer import DINOTrainer
+from dino.utils.logging import log_hydra_config_to_mlflow
 from dino.utils.random import set_seed
 from dino.utils.schedulers import (
     ConstantScheduler,
@@ -125,23 +127,31 @@ def train(cfg: TrainingConfig) -> None:
     msg = f"Using teacher temperature scheduler: {type(teacher_temp).__name__}"
     logger.info(msg)
 
-    trainer.train(
-        max_epochs=cfg.max_epochs,
-        batch_size=cfg.batch_size,
-        loss_function_kwargs={
-            "output_size": cfg.head.output_dim,
-            "teacher_temperature": teacher_temp,
-            "center_momentum": ConstantScheduler(cfg.center_momentum),
-        },
-        device=detect_device(),
-        optimizer_class=AdamW,
-        optimizer_kwargs={
-            "lr": 0.0005 * cfg.batch_size / 256,
-            "weight_decay": 0.04,  # Max: 0.4 TODO: Scheduler this as well
-        },
-        teacher_momentum=teacher_momentum,
-        num_workers=8,
-    )
+    # Initialize MLflow and create run context
+    mlflow.set_tracking_uri(Path.cwd() / "runs")
+    mlflow.set_experiment("model_training")
+
+    with mlflow.start_run(run_name=f"dino training {cfg.model_tag}"):
+        # Log configuration parameters
+        log_hydra_config_to_mlflow(cfg)
+
+        trainer.train(
+            max_epochs=cfg.max_epochs,
+            batch_size=cfg.batch_size,
+            loss_function_kwargs={
+                "output_size": cfg.head.output_dim,
+                "teacher_temperature": teacher_temp,
+                "center_momentum": ConstantScheduler(cfg.center_momentum),
+            },
+            device=detect_device(),
+            optimizer_class=AdamW,
+            optimizer_kwargs={
+                "lr": 0.0005 * cfg.batch_size / 256,
+                "weight_decay": 0.04,  # Max: 0.4 TODO: Scheduler this as well
+            },
+            teacher_momentum=teacher_momentum,
+            num_workers=8,
+        )
 
     student_name = f"{cfg.model_tag}_student" if cfg.model_tag else "student"
     student_with_head.save_backbone(Path(cfg.model_dir) / student_name)
