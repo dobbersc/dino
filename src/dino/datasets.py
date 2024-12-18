@@ -200,7 +200,6 @@ def get_split_indices(
 
 
 # Might still be useful for visualization purposes or other interactions
-@DeprecationWarning
 class ImageNetDirectoryDataset(Dataset[tuple[Image | torch.Tensor, int]]):
     """A PyTorch Dataset for ImageNet images stored in directories."""
 

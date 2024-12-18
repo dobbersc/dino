@@ -1,9 +1,17 @@
+import logging
 from pathlib import Path
 
 import pytest
 import torch
 
-from dino.models import HeadType, ModelType, _get_embed_dim, load_model_with_head
+from dino.models import (
+    BackboneConfig,
+    HeadConfig,
+    HeadType,
+    ModelType,
+    _get_embed_dim,
+    load_model_with_head,
+)
 
 
 @pytest.mark.parametrize(
@@ -13,15 +21,11 @@ from dino.models import HeadType, ModelType, _get_embed_dim, load_model_with_hea
     ),
     [
         (ModelType.VIT_DINO_S, HeadType.LINEAR),
-        (ModelType.VIT_T, HeadType.LINEAR),
-        (ModelType.VIT_S, HeadType.LINEAR),
-        (ModelType.VIT_B, HeadType.LINEAR),
+        (ModelType.DEIT_S, HeadType.LINEAR),
         (ModelType.RESNET_50, HeadType.LINEAR),
-        (ModelType.VIT_DINO_S, HeadType.MLP),
-        (ModelType.VIT_T, HeadType.MLP),
-        (ModelType.VIT_S, HeadType.MLP),
-        (ModelType.VIT_B, HeadType.MLP),
-        (ModelType.RESNET_50, HeadType.MLP),
+        (ModelType.VIT_DINO_S, HeadType.DINO_HEAD),
+        (ModelType.DEIT_S, HeadType.DINO_HEAD),
+        (ModelType.RESNET_50, HeadType.DINO_HEAD),
     ],
 )
 def test_load_model_with_head_no_weights(model_type, head_type):
@@ -31,11 +35,11 @@ def test_load_model_with_head_no_weights(model_type, head_type):
 
     # Load the model without weights
     model_with_head = load_model_with_head(
-        model_type=model_type,
-        head_type=head_type,
-        output_dim=num_classes,
-        head_weights=None,
-        backbone_weights=None,
+        backbone_cfg=BackboneConfig(model_type=model_type),
+        head_cfg=HeadConfig(
+            model_type=head_type,
+            output_dim=num_classes,
+        ),
     )
 
     assert model_with_head is not None, "Model should not be None"
@@ -52,46 +56,55 @@ def test_load_model_with_head_no_weights(model_type, head_type):
     ),
     [
         (ModelType.VIT_DINO_S, HeadType.LINEAR),
-        (ModelType.VIT_T, HeadType.LINEAR),
-        (ModelType.VIT_S, HeadType.LINEAR),
-        (ModelType.VIT_B, HeadType.LINEAR),
+        (ModelType.DEIT_S, HeadType.LINEAR),
         (ModelType.RESNET_50, HeadType.LINEAR),
-        (ModelType.VIT_DINO_S, HeadType.MLP),
-        (ModelType.VIT_T, HeadType.MLP),
-        (ModelType.VIT_S, HeadType.MLP),
-        (ModelType.VIT_B, HeadType.MLP),
-        (ModelType.RESNET_50, HeadType.MLP),
+        (ModelType.VIT_DINO_S, HeadType.DINO_HEAD),
+        (ModelType.DEIT_S, HeadType.DINO_HEAD),
+        (ModelType.RESNET_50, HeadType.DINO_HEAD),
     ],
 )
-def test_load_model_with_head_with_weights(tmp_model_dir: Path, model_type, head_type):
+def test_load_model_with_head_with_weights(tmp_model_dir: Path, model_type, head_type, caplog):
     """Test loading the model with pretrained weights for backbone and head."""
     print("loading model with head and weights: ", model_type, head_type)
+    caplog.set_level(logging.INFO)
     num_classes = 10
     embed_dim = _get_embed_dim(model_type)
 
     # Create a dummy model and save weights
     dummy_model_with_head = load_model_with_head(
-        model_type=model_type,
-        head_type=head_type,
-        output_dim=num_classes,
+        backbone_cfg=BackboneConfig(model_type=model_type),
+        head_cfg=HeadConfig(
+            model_type=head_type,
+            output_dim=num_classes,
+        ),
     )
 
     for param in dummy_model_with_head.parameters():
         param.data.fill_(0.5)  # pseudo training for
 
-    backbone_path = tmp_model_dir / "backbone.pth"
-    head_path = tmp_model_dir / "head.pth"
+    assert tmp_model_dir.exists(), f"Temporary directory not created: {tmp_model_dir}"
+
+    backbone_path = tmp_model_dir / "backbone.pt"
+    head_path = tmp_model_dir / "head.pt"
 
     dummy_model_with_head.save_backbone(backbone_path)
     dummy_model_with_head.save_head(head_path)
 
+    # Verify files are saved
+    assert backbone_path.exists(), f"Backbone file not saved: {backbone_path}"
+    assert head_path.exists(), f"Head file not saved: {head_path}"
+
     # Load the model with saved weights
     model_with_head = load_model_with_head(
-        model_type=model_type,
-        head_type=head_type,
-        output_dim=num_classes,
-        head_weights=head_path,
-        backbone_weights=backbone_path,
+        backbone_cfg=BackboneConfig(
+            model_type=model_type,
+            weights=backbone_path,
+        ),
+        head_cfg=HeadConfig(
+            model_type=head_type,
+            output_dim=num_classes,
+            weights=head_path,
+        ),
     )
 
     assert model_with_head is not None, "Model should not be None"
