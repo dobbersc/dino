@@ -53,6 +53,7 @@ dev = [
 
 [project.scripts]
 dino = "dino.__main__:entry_point"
+train = "dino.entry_points.train:train"
 
 [tool.black]
 line-length = 120

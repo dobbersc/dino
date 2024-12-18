@@ -38,9 +38,9 @@ class TransformType(Enum):
 
 @dataclass
 class DatasetConfig:
-    type_: DatasetType = MISSING
-    transform: TransformType = MISSING
-    data_dir: str = MISSING
+    type_: DatasetType = DatasetType.IMAGE_FOLDER
+    transform: TransformType = TransformType.DEFAULT
+    data_dir: str = Path.cwd() / "data"
     train: bool = True
 
 
@@ -236,7 +236,8 @@ class ImageNetDirectoryDataset(Dataset[tuple[Image | torch.Tensor, int]]):
         if sample_classes_indices is not None:
             samples_raw = list(
                 filter(
-                    lambda s: self.wnid_to_class_idx[s[1]] in sample_classes_indices, samples_raw,
+                    lambda s: self.wnid_to_class_idx[s[1]] in sample_classes_indices,
+                    samples_raw,
                 ),
             )
             self.wnid_to_class_idx = self.get_wnid_to_class_mapping(samples_raw)
