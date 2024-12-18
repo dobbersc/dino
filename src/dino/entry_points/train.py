@@ -36,7 +36,6 @@ logger: logging.Logger = logging.getLogger(__name__)
 class TrainingConfig:
     model_dir: str = str(Path.cwd() / "models")
     model_tag: str | None = None
-<<<<<<< HEAD
 
     dataset: DatasetConfig = field(default_factory=DatasetConfig)
 
@@ -58,9 +57,6 @@ class TrainingConfig:
     teacher_temp_warmup_epochs: int = 0  # teacher temperature warmup epochs
 
     center_momentum: float = 0.9  # center momentum constant value
-=======
-    dataset_dir: str = MISSING
->>>>>>> main
 
 
 _cs = ConfigStore.instance()
@@ -76,39 +72,9 @@ def train(cfg: TrainingConfig) -> None:
     cfg = OmegaConf.to_object(cfg)
     set_seed(42)
 
-<<<<<<< HEAD
     student_with_head = load_model_with_head(cfg.backbone, cfg.head)
     teacher_with_head = load_model_with_head(cfg.backbone, cfg.head)
     msg = f"{cfg.dataset.data_dir}; {cfg.backbone.model_type=}; {cfg.backbone.pretrained=}"
-=======
-    head_hidden_dim: int = 2048
-    head_output_dim: int = 4096
-    batch_size: int = 128
-
-    pretrained: bool = False
-    model_name: str = "deit_small_patch16_224"
-
-    student: ResNet | VisionTransformer
-    teacher: ResNet | VisionTransformer
-    if "resnet" in model_name:
-        student = timm.create_model(model_name, num_classes=0, pretrained=pretrained)
-        teacher = timm.create_model(model_name, num_classes=0, pretrained=pretrained)
-    else:
-        student = timm.create_model(
-            model_name,
-            num_classes=0,
-            dynamic_img_size=True,
-            pretrained=pretrained,
-        )
-        teacher = timm.create_model(
-            model_name,
-            num_classes=0,
-            dynamic_img_size=True,
-            pretrained=pretrained,
-        )
-
-    msg = f"{cfg.dataset_dir}; {model_name=}; {pretrained=}"
->>>>>>> main
     logger.info(msg)
 
     teacher_with_head.load_state_dict(student_with_head.state_dict())
@@ -123,7 +89,6 @@ def train(cfg: TrainingConfig) -> None:
         teacher=teacher_with_head,
         view_dataset=dataset,
     )
-<<<<<<< HEAD
 
     # the step counter is increased after each batch for teacher_momentum and loss_function
     # The dino loss updates the the teacher's temperature and center momentum for each step.
@@ -139,16 +104,6 @@ def train(cfg: TrainingConfig) -> None:
             initial=cfg.teacher_momentum_initial,
             final=cfg.teacher_momentum_final,
         )
-=======
-    trainer.train(
-        max_epochs=100,
-        batch_size=batch_size,
-        loss_function_kwargs={"output_size": head_output_dim},
-        device=detect_device(),
-        optimizer_class=AdamW,
-        optimizer_kwargs={"lr": 0.0005 * batch_size / 256},
-        num_workers=8,
->>>>>>> main
     )
 
     msg = f"Using teacher momentum scheduler: {type(teacher_momentum).__name__}"
