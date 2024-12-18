@@ -52,7 +52,7 @@ dev = [
 ]
 
 [project.scripts]
-dino = "dino.__main__:entry_point"
+evaluate = "dino.entry_points.evaluate:evaluate"
 train = "dino.entry_points.train:train"
 
 [tool.black]

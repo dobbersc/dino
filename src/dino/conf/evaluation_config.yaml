@@ -1,0 +1,11 @@
+defaults:
+  - base_evaluate
+
+dataset:
+  data_dir: ${hydra:runtime.cwd}/data/tiny-imagenet-200/train
+
+backbone:
+  model_type: VIT_DINO_S
+
+num_epochs: 10
+batch_size: 4

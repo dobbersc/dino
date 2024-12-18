@@ -1,5 +1,0 @@
-defaults:
-  - base_backbone
-
-model_type: VIT_DINO_S
-pretrained_weights: null

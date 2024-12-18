@@ -34,6 +34,7 @@ class TransformType(Enum):
     DEFAULT = "default"
     LINEAR_VAL = "linear_val"
     LINEAR_TRAIN = "linear_train"
+    KNN = "knn"
 
 
 @dataclass
@@ -75,7 +76,7 @@ regular_transform: Callable[[Image], torch.Tensor] = transforms.Compose(
 )
 """The default transform for ImageNet images."""
 
-linear_val_transform: Callable[[Image], torch.Tensor] = transforms.Compose(
+val_transform: Callable[[Image], torch.Tensor] = transforms.Compose(
     [
         transforms.Resize(256, interpolation=3),
         transforms.CenterCrop(224),
@@ -107,7 +108,9 @@ def get_transform(transform_type: TransformType) -> Callable[[Image], torch.Tens
         case TransformType.DEFAULT:
             return regular_transform
         case TransformType.LINEAR_VAL:
-            return linear_val_transform
+            return val_transform
+        case TransformType.KNN:
+            return val_transform
         case TransformType.LINEAR_TRAIN:
             return linear_train_transform
 
@@ -125,8 +128,8 @@ def get_dataset(cfg: DatasetConfig) -> Dataset[tuple[Image | torch.Tensor, int]]
             return ImageNetDirectoryDataset(
                 data_dir=cfg.data_dir,
                 transform=get_transform(cfg.transform),
-                path_wnids=cfg.path_wnids,
-                sample_classes_indices=cfg.sample_classes_indices,
+                # path_wnids=cfg.path_wnids,
+                # sample_classes_indices=cfg.sample_classes_indices,
                 train=cfg.train,
             )
         case DatasetType.CIFAR10:
@@ -196,6 +199,8 @@ def get_split_indices(
     return train_indices, val_indices
 
 
+# Might still be useful for visualization purposes or other interactions
+@DeprecationWarning
 class ImageNetDirectoryDataset(Dataset[tuple[Image | torch.Tensor, int]]):
     """A PyTorch Dataset for ImageNet images stored in directories."""
 

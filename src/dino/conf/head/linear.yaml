@@ -1,6 +1,0 @@
-defaults:
-  - base_head
-  
-
-model_type: LINEAR
-output_dim: 1000

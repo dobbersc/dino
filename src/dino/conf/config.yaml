@@ -1,9 +1,0 @@
-defaults:
-  - base_dino
-  - finetune: default
-  - evaluate: knn
-  - train: default
-  - _self_
-
-verbose: True
-log_dir: /logs

@@ -21,7 +21,7 @@ from dino.utils.schedulers import (
     Scheduler,
     SequentialScheduler,
 )
-from dino.utils.torch import detect_device, save_model
+from dino.utils.torch import detect_device
 
 logger = logging.getLogger(__name__)
 
@@ -144,7 +144,7 @@ def train(cfg: TrainingConfig) -> None:
     )
 
     student_name = f"{cfg.model_tag}_student" if cfg.model_tag else "student"
-    save_model(student_with_head, Path(cfg.model_dir) / student_name)
+    student_with_head.save_backbone(Path(cfg.model_dir) / student_name)
 
     teacher_name = f"{cfg.model_tag}_teacher" if cfg.model_tag else "teacher"
-    save_model(teacher_with_head, Path(cfg.model_dir) / teacher_name)
+    teacher_with_head.save(Path(cfg.model_dir) / teacher_name)

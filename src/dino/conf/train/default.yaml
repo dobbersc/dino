@@ -1,8 +1,0 @@
-defaults:
-  - base_train
-
-
-
-model_dir: ${hydra:runtime.cwd}/models/
-model_tag: default
-dataset_dir: ${hydra:runtime.cwd}/data/tiny-imagenet-200/train
