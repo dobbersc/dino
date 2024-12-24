@@ -12,7 +12,7 @@ from torchvision.datasets import ImageFolder
 from torchvision.transforms import v2
 
 from dino.datasets import DatasetConfig, UnlabelledDataset
-from dino.models import BackboneConfig, HeadConfig, load_model_with_head
+from dino.models import BackboneConfig, HeadConfig, load_model_with_head, ModelWithHead
 from dino.trainer import DINOTrainer
 from dino.utils.logging import log_hydra_config_to_mlflow
 from dino.utils.random import set_seed
@@ -45,18 +45,22 @@ class TrainingConfig:
     batch_size: int = 128
     max_epochs: int = 100
 
+    # Teacher momentum scheduler values:
+    # If the final value is set to None, a constant scheduler with the initial value will be used.
+    # Otherwise, a cosine scheduler from the initial to the final value will be used.
     teacher_momentum_initial: float = 0.996
-    teacher_momentum_final: float | None = (
-        1.0  # teacher momentum scheduler final value (optional) -> Constant or Cosine Scheduler
-    )
+    teacher_momentum_final: float | None = 1.0
 
-    teacher_temp: float = 0.04  # teacher temperature, constant value
-    teacher_temp_warmup: float = (
-        0.04  # teacher temperature initial warmup value, linearly increasing
-    )
-    teacher_temp_warmup_epochs: int = 0  # teacher temperature warmup epochs
+    # Teacher temperature linear warmup scheduler:
+    # If the final value is set to None, a constant scheduler with the initial value will be used.
+    # Otherwise, a constant scheduler with a linear warmup from the initial to the final value will be used.
+    teacher_temperature_initial: float = 0.04
+    teacher_temperature_final: float | None = 0.07
+    teacher_temperature_warmup_epochs: int = 30
 
-    center_momentum: float = 0.9  # center momentum constant value
+    center_momentum: float = 0.9  # Constant momentum for the teacher's logits center.
+
+    num_workers: int = 8
 
 
 _cs = ConfigStore.instance()
@@ -68,15 +72,15 @@ _cs.store(
 
 @hydra.main(version_base=None, config_path="../conf", config_name="train_config")
 def train(cfg: TrainingConfig) -> None:
-    logger.info(OmegaConf.to_yaml(cfg))
-    cfg = OmegaConf.to_object(cfg)
     set_seed(42)
 
-    student_with_head = load_model_with_head(cfg.backbone, cfg.head)
-    teacher_with_head = load_model_with_head(cfg.backbone, cfg.head)
-    msg = f"{cfg.dataset.data_dir}; {cfg.backbone.model_type=}; {cfg.backbone.pretrained=}"
-    logger.info(msg)
+    logger.info(OmegaConf.to_yaml(cfg))
+    cfg: TrainingConfig = OmegaConf.to_object(cfg)
 
+    logger.info("%s; %s, %s", f"{cfg.dataset.data_dir=}", f"{cfg.backbone.model_type=}", f"{cfg.backbone.pretrained=}")
+
+    student_with_head: ModelWithHead = load_model_with_head(cfg.backbone, cfg.head)
+    teacher_with_head: ModelWithHead = load_model_with_head(cfg.backbone, cfg.head)
     teacher_with_head.load_state_dict(student_with_head.state_dict())
 
     # for more flexible dataset configuration: dataset = dino.datasets.get_dataset(cfg.dataset)
@@ -90,14 +94,14 @@ def train(cfg: TrainingConfig) -> None:
         view_dataset=dataset,
     )
 
-    # the step counter is increased after each batch for teacher_momentum and loss_function
-    # The dino loss updates the the teacher's temperature and center momentum for each step.
-    # calculate n_batches per epoch for the internal view_dataset:
-    steps_per_epoch = len(trainer.view_dataset) // cfg.batch_size
-
+    # The step counter is increased after each batch for the dino trainer's schedulers.
+    # Since the trainer's data loader drops the last data points such that the effective dataset is
+    # divisible by the batch size, we can easily calculate the maximum number of steps.
+    steps_per_epoch: int = len(trainer.view_dataset) // cfg.batch_size
     max_steps: int = steps_per_epoch * cfg.max_epochs
+
     teacher_momentum: Scheduler[float] = (
-        ConstantScheduler(constant=cfg.teacher_momentum_initial)
+        ConstantScheduler(max_steps=max_steps, constant=cfg.teacher_momentum_initial)
         if cfg.teacher_momentum_final is None
         else CosineScheduler(
             max_steps=max_steps,
@@ -105,31 +109,39 @@ def train(cfg: TrainingConfig) -> None:
             final=cfg.teacher_momentum_final,
         )
     )
+    logger.info(f"Using teacher momentum scheduler: %s", type(teacher_momentum).__name__)
 
-    msg = f"Using teacher momentum scheduler: {type(teacher_momentum).__name__}"
-    logger.info(msg)
-
-    teacher_temp = ConstantScheduler(cfg.teacher_temp)
-    if cfg.teacher_temp_warmup_epochs > 0:
-        teacher_temp = SequentialScheduler(
-            [
-                # insert linearly increasing warmup scheduler
-                LinearScheduler(
-                    cfg.teacher_temp_warmup,
-                    max_steps=steps_per_epoch * cfg.teacher_temp_warmup_epochs,
-                ),
-                teacher_temp,
-            ],
+    if cfg.teacher_temperature_warmup_epochs > cfg.max_epochs:
+        msg: str = (
+            f"The number of warmup epochs for the teacher temperature ({cfg.teacher_temperature_warmup_epochs}) "
+            f"must not be greater than the number of maximum epochs ({cfg.max_epochs})."
         )
-    msg = f"Using teacher temperature scheduler: {type(teacher_temp).__name__}"
-    logger.info(msg)
+        raise RuntimeError(msg)
 
-    # Initialize MLflow and create run context
+    teacher_temperature: Scheduler[float]
+    if cfg.teacher_temperature_final is None or cfg.teacher_temperature_warmup_epochs <= 0:
+        teacher_temperature = ConstantScheduler(max_steps=max_steps, constant=cfg.teacher_temperature_initial)
+    else:
+        milestone: int = cfg.teacher_temperature_warmup_epochs * steps_per_epoch
+        teacher_temperature = SequentialScheduler(
+            schedulers=[
+                LinearScheduler(
+                    max_steps=milestone,
+                    initial=cfg.teacher_temperature_initial,
+                    final=cfg.teacher_temperature_final,
+                ),
+                ConstantScheduler(max_steps=max_steps - milestone, constant=cfg.teacher_temperature_final),
+            ],
+            milestones=[milestone],
+        )
+    logger.info(f"Using teacher temperature scheduler: %s", type(teacher_temperature).__name__)
+
+    # Initialize mlflow and create run context.
     mlflow.set_tracking_uri(Path.cwd() / "runs")
     mlflow.set_experiment("model_training")
 
     with mlflow.start_run(run_name=f"dino training {cfg.model_tag}"):
-        # Log configuration parameters
+        # Log configuration parameters.
         log_hydra_config_to_mlflow(cfg)
 
         trainer.train(
@@ -137,17 +149,14 @@ def train(cfg: TrainingConfig) -> None:
             batch_size=cfg.batch_size,
             loss_function_kwargs={
                 "output_size": cfg.head.output_dim,
-                "teacher_temperature": teacher_temp,
-                "center_momentum": ConstantScheduler(cfg.center_momentum),
+                "teacher_temperature": teacher_temperature,
+                "center_momentum": ConstantScheduler(max_steps=max_steps, constant=cfg.center_momentum),
             },
             device=detect_device(),
             optimizer_class=AdamW,
-            optimizer_kwargs={
-                "lr": 0.0005 * cfg.batch_size / 256,
-                "weight_decay": 0.04,  # Max: 0.4 TODO: Scheduler this as well
-            },
+            optimizer_kwargs={"lr": 0.0005 * cfg.batch_size / 256},
             teacher_momentum=teacher_momentum,
-            num_workers=8,
+            num_workers=cfg.num_workers,
         )
 
     student_name = f"{cfg.model_tag}_student" if cfg.model_tag else "student"
