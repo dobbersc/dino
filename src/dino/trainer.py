@@ -283,7 +283,7 @@ class DINOTrainer:
 
         # Initialize the teacher momentum scheduler.
         if isinstance(teacher_momentum, float):
-            teacher_momentum = ConstantScheduler(teacher_momentum)
+            teacher_momentum = ConstantScheduler(max_steps=max_steps, constant=teacher_momentum)
         elif teacher_momentum is None:
             teacher_momentum = CosineScheduler(max_steps=max_steps, initial=0.996, final=1.0)
 
