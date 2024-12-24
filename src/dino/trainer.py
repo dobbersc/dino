@@ -262,9 +262,6 @@ class DINOTrainer:
         max_steps: int = max_epochs * len(data_loader)
 
         # Initialize the loss function.
-        loss_function_kwargs = loss_function_kwargs or {}
-        if loss_function_class is DINOLoss:
-            loss_function_kwargs.setdefault("teacher_temperature", ConstantScheduler(0.04))  # TODO: Use right scheduler
         loss_function: DistillationLoss = loss_function_class(**loss_function_kwargs).to(device)
 
         # Initialize the optimizer.
