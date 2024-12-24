@@ -126,6 +126,7 @@ class DINOTrainer:
 
     def _train_epoch(
         self,
+        epoch: int,
         data_loader: DataLoader[Views],
         optimizer: Optimizer,
         loss_function: DistillationLoss,
@@ -134,9 +135,6 @@ class DINOTrainer:
         teacher_momentum_scheduler: Scheduler[float],
         max_gradient_norm: float,
         device: torch.device,
-        # necessary to have consistent steps across epochs for mlflow logging:
-        # I have the feeling @Conrad doesn't like this
-        global_batch_index: int,
     ) -> tuple[float, dict[str, float]]:
         self.student.train()
         self.teacher.train()
@@ -146,14 +144,20 @@ class DINOTrainer:
         start_time: float = time.time()
 
         views: Views
+        global_batch_index: int = (epoch - 1) * len(data_loader)
         for batch_index, views in enumerate(data_loader, start=1):
             local_views: list[Tensor] = [local_view.to(device) for local_view in views.local_views]
             global_views: list[Tensor] = [global_view.to(device) for global_view in views.global_views]
 
             # Set weight decay if it is supported by the optimizer. We only regularize the first parameter group.
+            effective_weight_decay: float | None
             weight_decay_is_supported: bool = "weight_decay" in optimizer.param_groups[0]
-            if weight_decay_scheduler is not None and weight_decay_is_supported:
-                optimizer.param_groups[0]["weight_decay"] = weight_decay_scheduler.get_value()
+            if weight_decay_is_supported:
+                if weight_decay_scheduler is not None:
+                    optimizer.param_groups[0]["weight_decay"] = weight_decay_scheduler.get_value()
+                effective_weight_decay = optimizer.param_groups[0]["weight_decay"]
+            else:
+                effective_weight_decay = None
 
             optimizer.zero_grad()
 
@@ -169,12 +173,11 @@ class DINOTrainer:
             # Log intermediate results.
             if batch_index % max(1, len(data_loader) // 10) == 0:
                 inspection_metrics_log: str = " ".join(
-                    f"- {key} {value / batch_index:.4f}" for key, value in aggregated_inspection_metrics.items()
+                    f"- {key.replace('_', ' ')} {value / batch_index:.4f}"
+                    for key, value in aggregated_inspection_metrics.items()
                 )
                 weight_decay_log: str = (
-                    f"- weight decay {optimizer.param_groups[0]['weight_decay']:.4f}"
-                    if weight_decay_is_supported
-                    else ""
+                    f"- weight decay {effective_weight_decay:.4f}" if effective_weight_decay is not None else ""
                 )
                 msg: str = (
                     f"batch {batch_index}/{len(data_loader)}"
@@ -189,13 +192,14 @@ class DINOTrainer:
 
                 mlflow_log_metrics(
                     "train_batch",
-                    {
+                    metrics={
                         "loss": aggregated_loss / batch_index,
-                        "lr": optimizer.param_groups[0]["lr"],
-                        "teacher momentum": teacher_momentum_scheduler.get_value(),
+                        "learning_rate": optimizer.param_groups[0]["lr"],
+                        "teacher_momentum": teacher_momentum_scheduler.get_value(),
+                        **({"weight_decay": effective_weight_decay} if effective_weight_decay is not None else {}),
                         **inspection_metrics,
                     },
-                    global_batch_index,
+                    step=global_batch_index,
                 )
 
             loss.backward()
@@ -209,7 +213,7 @@ class DINOTrainer:
                 weight_decay_scheduler.step()
 
             self._update_teacher(teacher_momentum_scheduler)
-            global_batch_index += 1
+            global_batch_index += 1  # Finished current batch.
 
         for key in aggregated_inspection_metrics:
             aggregated_inspection_metrics[key] /= len(data_loader)
@@ -297,7 +301,8 @@ class DINOTrainer:
                 logger.info("EPOCH %d", epoch)
 
                 loss, inspection_metrics = self._train_epoch(
-                    data_loader,
+                    epoch=epoch,
+                    data_loader=data_loader,
                     optimizer=optimizer,
                     loss_function=loss_function,
                     lr_scheduler=lr_scheduler,
@@ -305,7 +310,6 @@ class DINOTrainer:
                     teacher_momentum_scheduler=teacher_momentum,
                     max_gradient_norm=max_gradient_norm,
                     device=device,
-                    global_batch_index=(epoch - 1) * len(data_loader),
                 )
 
                 logger.info(LOG_SEPARATOR)
@@ -315,14 +319,7 @@ class DINOTrainer:
                     name: str = "KL Divergence" if key == "kl_divergence" else key.replace("_", " ").title()
                     logger.info("%s: %.8f", name, value)
 
-                mlflow_log_metrics(
-                    "train_epoch",
-                    {
-                        "loss": loss,
-                        **inspection_metrics,
-                    },
-                    epoch,
-                )
+                mlflow_log_metrics("train_epoch", metrics={"loss": loss, **inspection_metrics}, step=epoch)
 
         except KeyboardInterrupt:
             logger.info(LOG_SEPARATOR)
