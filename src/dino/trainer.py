@@ -144,7 +144,7 @@ class DINOTrainer:
         start_time: float = time.time()
 
         views: Views
-        global_batch_index: int = (epoch - 1) * len(data_loader)
+        global_batch_step: int = (epoch - 1) * len(data_loader) + 1
         for batch_index, views in enumerate(data_loader, start=1):
             local_views: list[Tensor] = [local_view.to(device) for local_view in views.local_views]
             global_views: list[Tensor] = [global_view.to(device) for global_view in views.global_views]
@@ -193,13 +193,14 @@ class DINOTrainer:
                 mlflow_log_metrics(
                     "train_batch",
                     metrics={
+                        "epoch": epoch,
                         "loss": aggregated_loss / batch_index,
                         "learning_rate": optimizer.param_groups[0]["lr"],
                         "teacher_momentum": teacher_momentum_scheduler.get_value(),
                         **({"weight_decay": effective_weight_decay} if effective_weight_decay is not None else {}),
                         **inspection_metrics,
                     },
-                    step=global_batch_index,
+                    step=global_batch_step,
                 )
 
             loss.backward()
@@ -213,7 +214,7 @@ class DINOTrainer:
                 weight_decay_scheduler.step()
 
             self._update_teacher(teacher_momentum_scheduler)
-            global_batch_index += 1  # Finished current batch.
+            global_batch_step += 1  # Finished current batch.
 
         for key in aggregated_inspection_metrics:
             aggregated_inspection_metrics[key] /= len(data_loader)
