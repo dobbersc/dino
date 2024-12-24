@@ -171,6 +171,9 @@ class DINOTrainer:
                 aggregated_inspection_metrics[key] += value.item()
 
             # Log intermediate results to mlflow.
+            loss_schedulers_values: dict[str, float] = {
+                scheduler_name: scheduler.get_value() for scheduler_name, scheduler in loss_function.schedulers.items()
+            }
             mlflow_log_metrics(
                 "train_batch",
                 metrics={
@@ -179,6 +182,7 @@ class DINOTrainer:
                     "learning_rate": optimizer.param_groups[0]["lr"],
                     "teacher_momentum": teacher_momentum_scheduler.get_value(),
                     **({"weight_decay": effective_weight_decay} if effective_weight_decay is not None else {}),
+                    **loss_schedulers_values,
                     **inspection_metrics,
                 },
                 step=global_batch_step,
@@ -193,6 +197,9 @@ class DINOTrainer:
                 weight_decay_log: str = (
                     f"- weight decay {effective_weight_decay:.4f}" if effective_weight_decay is not None else ""
                 )
+                loss_schedulers_log: str = " ".join(
+                    f"- {key.replace('_', ' ')} {value:.4f}" for key, value in loss_schedulers_values.items()
+                )
                 msg: str = (
                     f"batch {batch_index}/{len(data_loader)}"
                     f" - loss {aggregated_loss / batch_index:.4f}"
@@ -200,6 +207,7 @@ class DINOTrainer:
                     f" - lr {optimizer.param_groups[0]['lr']:.8f}"
                     f" {weight_decay_log}"
                     f" - teacher momentum {teacher_momentum_scheduler.get_value():.4f}"
+                    f" {loss_schedulers_log}"
                     f" - time {time.time() - start_time:.2f}s"
                 )
                 logger.info(msg)
