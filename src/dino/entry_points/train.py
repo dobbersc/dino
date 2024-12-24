@@ -1,7 +1,7 @@
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import hydra
 import mlflow
@@ -12,7 +12,7 @@ from torchvision.datasets import ImageFolder
 from torchvision.transforms import v2
 
 from dino.datasets import DatasetConfig, UnlabelledDataset
-from dino.models import BackboneConfig, HeadConfig, load_model_with_head, ModelWithHead
+from dino.models import BackboneConfig, HeadConfig, ModelWithHead, load_model_with_head
 from dino.trainer import DINOTrainer
 from dino.utils.logging import log_hydra_config_to_mlflow
 from dino.utils.random import set_seed
@@ -75,7 +75,7 @@ def train(cfg: TrainingConfig) -> None:
     set_seed(42)
 
     logger.info(OmegaConf.to_yaml(cfg))
-    cfg: TrainingConfig = OmegaConf.to_object(cfg)
+    cfg = cast(TrainingConfig, OmegaConf.to_object(cfg))
 
     logger.info("%s; %s, %s", f"{cfg.dataset.data_dir=}", f"{cfg.backbone.model_type=}", f"{cfg.backbone.pretrained=}")
 
@@ -109,7 +109,7 @@ def train(cfg: TrainingConfig) -> None:
             final=cfg.teacher_momentum_final,
         )
     )
-    logger.info(f"Using teacher momentum scheduler: %s", teacher_momentum)
+    logger.info("Using teacher momentum scheduler: %s", teacher_momentum)
 
     if cfg.teacher_temperature_warmup_epochs > cfg.max_epochs:
         msg: str = (
@@ -134,7 +134,7 @@ def train(cfg: TrainingConfig) -> None:
             ],
             milestones=[milestone],
         )
-    logger.info(f"Using teacher temperature scheduler: %s", teacher_temperature)
+    logger.info("Using teacher temperature scheduler: %s", teacher_temperature)
 
     # Initialize mlflow and create run context.
     mlflow.set_tracking_uri(Path.cwd() / "runs")

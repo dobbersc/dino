@@ -55,6 +55,7 @@ class Scheduler(ABC, Generic[_T]):
 
 class SequentialScheduler(Scheduler[_T]):
     """Utility scheduler that enables the sequential execution of multiple schedulers.
+
     Milestone points control the exact intervals when the scheduler is active.
     """
 

@@ -262,7 +262,7 @@ class DINOTrainer:
         max_steps: int = max_epochs * len(data_loader)
 
         # Initialize the loss function.
-        loss_function: DistillationLoss = loss_function_class(**loss_function_kwargs).to(device)
+        loss_function: DistillationLoss = loss_function_class(**(loss_function_kwargs or {})).to(device)
 
         # Initialize the optimizer.
         optimizer: Optimizer = optimizer_class(self.student.parameters(), **(optimizer_kwargs or {}))
