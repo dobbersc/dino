@@ -8,6 +8,9 @@ from PIL import Image
 from torchvision.transforms import v2  # type: ignore[import-untyped]
 
 from dino.augmentation import DefaultGlobalAugmenter, DefaultLocalAugmenter
+from dino.utils.torch import detect_device
+
+device = detect_device()
 
 
 def _normalize_img(img: torch.Tensor) -> torch.Tensor:
@@ -160,7 +163,7 @@ def main() -> None:
         plot_augmentations(tensor_image, Path(args.output_dir))
     elif args.type == "attention":
         # TODO: Load custom model
-        model = torch.hub.load("facebookresearch/dino:main", "dino_vits8")
+        model = torch.hub.load("facebookresearch/dino:main", "dino_vits8").to(device)
         patch_size = 8
         plot_original_image(tensor_image, Path(args.output_dir))
         plot_attention(
