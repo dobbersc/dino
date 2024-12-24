@@ -170,7 +170,21 @@ class DINOTrainer:
             for key, value in inspection_metrics.items():
                 aggregated_inspection_metrics[key] += value.item()
 
-            # Log intermediate results.
+            # Log intermediate results to mlflow.
+            mlflow_log_metrics(
+                "train_batch",
+                metrics={
+                    "epoch": epoch,
+                    "loss": aggregated_loss / batch_index,
+                    "learning_rate": optimizer.param_groups[0]["lr"],
+                    "teacher_momentum": teacher_momentum_scheduler.get_value(),
+                    **({"weight_decay": effective_weight_decay} if effective_weight_decay is not None else {}),
+                    **inspection_metrics,
+                },
+                step=global_batch_step,
+            )
+
+            # Log intermediate results to stdout.
             if batch_index % max(1, len(data_loader) // 10) == 0:
                 inspection_metrics_log: str = " ".join(
                     f"- {key.replace('_', ' ')} {value / batch_index:.4f}"
@@ -189,19 +203,6 @@ class DINOTrainer:
                     f" - time {time.time() - start_time:.2f}s"
                 )
                 logger.info(msg)
-
-                mlflow_log_metrics(
-                    "train_batch",
-                    metrics={
-                        "epoch": epoch,
-                        "loss": aggregated_loss / batch_index,
-                        "learning_rate": optimizer.param_groups[0]["lr"],
-                        "teacher_momentum": teacher_momentum_scheduler.get_value(),
-                        **({"weight_decay": effective_weight_decay} if effective_weight_decay is not None else {}),
-                        **inspection_metrics,
-                    },
-                    step=global_batch_step,
-                )
 
             loss.backward()
             nn.utils.clip_grad_norm_(self.student.parameters(), max_norm=max_gradient_norm)
