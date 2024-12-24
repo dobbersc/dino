@@ -109,7 +109,7 @@ def train(cfg: TrainingConfig) -> None:
             final=cfg.teacher_momentum_final,
         )
     )
-    logger.info(f"Using teacher momentum scheduler: %s", type(teacher_momentum).__name__)
+    logger.info(f"Using teacher momentum scheduler: %s", teacher_momentum)
 
     if cfg.teacher_temperature_warmup_epochs > cfg.max_epochs:
         msg: str = (
@@ -134,7 +134,7 @@ def train(cfg: TrainingConfig) -> None:
             ],
             milestones=[milestone],
         )
-    logger.info(f"Using teacher temperature scheduler: %s", type(teacher_temperature).__name__)
+    logger.info(f"Using teacher temperature scheduler: %s", teacher_temperature)
 
     # Initialize mlflow and create run context.
     mlflow.set_tracking_uri(Path.cwd() / "runs")
@@ -164,3 +164,7 @@ def train(cfg: TrainingConfig) -> None:
 
     teacher_name = f"{cfg.model_tag}_teacher" if cfg.model_tag else "teacher"
     teacher_with_head.save(Path(cfg.model_dir) / teacher_name)
+
+
+if __name__ == "__main__":
+    train()
