@@ -1,58 +1,13 @@
 import argparse
-import random
-from itertools import islice
+import math
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import torch
 from PIL import Image
-from torchvision.transforms import v2
+from torchvision.transforms import v2  # type: ignore[import-untyped]
 
 from dino.augmentation import DefaultGlobalAugmenter, DefaultLocalAugmenter
-from dino.datasets import ImageNetDirectoryDataset, unnorm
-
-DISPLAY_NUM_IMAGES: int = 12
-DISPLAY_ROWS: int = 2
-DISPLAY_COLS: int = 6
-
-
-# TODO: save figure to file
-def display_data(dataset: ImageNetDirectoryDataset, class_idx=None, predict=None):
-    # Assuming `dataset.get_image_by_class` is a generator
-    max_length = 10
-    if class_idx is not None:
-        raw_images = list(islice(dataset.get_image_by_class(class_idx), DISPLAY_NUM_IMAGES))
-        class_indices = [class_idx] * DISPLAY_NUM_IMAGES
-        titles = None
-    else:
-        # pick random images
-        img_indices = random.sample(range(len(dataset)), DISPLAY_NUM_IMAGES)
-        raw_images, class_indices = zip(*[dataset[i] for i in img_indices], strict=False)
-        titles = [f"g={dataset.get_class_name(g)[:max_length]}" for g in class_indices]
-        print(titles)
-
-    if predict is not None:
-        # Assuming `predict` is a function that takes in a list of images and returns a list of predictions
-        predictions = predict(raw_images)
-        titles = [
-            f"y={dataset.get_class_name(y)[:max_length]}\ng={dataset.get_class_name(g)[:max_length]}"
-            for y, g in zip(predictions, class_indices, strict=False)
-        ]
-
-    images = [unnorm(img) for img in raw_images]
-
-    # display 4x4
-    fig, ax = plt.subplots(DISPLAY_ROWS, DISPLAY_COLS, figsize=(12, 4))
-    for i, (img, ax) in enumerate(zip(images, ax.flatten(), strict=False)):
-        ax.imshow(img.permute(1, 2, 0).numpy())
-        ax.axis("off")
-        if titles is not None:
-            ax.set_title(titles[i])
-
-    if titles is None:
-        title = dataset.get_class_name(class_idx)
-        fig.suptitle(title)
-    plt.show()
 
 
 def _normalize_img(img: torch.Tensor) -> torch.Tensor:
@@ -94,17 +49,104 @@ def plot_augmentations(image: torch.Tensor, output_dir: Path) -> None:
     plt.savefig(output_dir / "augmentations.pdf")
 
 
+def plot_attention(
+    image: torch.Tensor,
+    output_dir: Path,
+    model,
+    patch_size: int,
+    layer: int = -1,
+    threshold: float = 0.5,
+) -> None:
+    img = image.unsqueeze(0)
+    h_img, w_img = img.shape[-2:]
+    h_featmap, w_featmap = h_img // patch_size, w_img // patch_size
+    img = img[..., : h_img * patch_size, : w_img * patch_size]  # image divisible by patch size
+
+    attention_maps = []
+
+    def get_attention_maps(_module, _module_input, module_output):
+        attention_maps.append(module_output)
+
+    for block in model.blocks:
+        if hasattr(block.attn, "fused_attn"):
+            block.attn.fused_attn = False
+        block.attn.attn_drop.register_forward_hook(get_attention_maps)
+
+    model.eval()
+    with torch.no_grad():
+        _ = model(img)
+
+    attention_map = attention_maps[layer]  # (batch_size, num_heads, num_patches, num_patches)
+    num_heads = attention_map.shape[1]
+    cls_attention: torch.Tensor = attention_map[0, :, 0, 1:].squeeze()  # .cpu().numpy()  # (num_heads, num_patches-1)
+    cls_attention = cls_attention / torch.sum(cls_attention, dim=-1, keepdim=True)
+
+    if threshold > 0:
+        sorted_values, sorted_indices = torch.sort(cls_attention, dim=-1, descending=False, stable=True)
+        cumulative_values = torch.cumsum(sorted_values, dim=-1)
+        attention_mask_unordered = cumulative_values > (1 - threshold)
+        reverse_indices = torch.argsort(sorted_indices)
+        attention_mask_ordered = torch.gather(attention_mask_unordered, dim=-1, index=reverse_indices)
+        cls_attention = cls_attention * attention_mask_ordered
+
+    attentions = cls_attention.reshape(num_heads, h_featmap, w_featmap)
+    attentions = torch.nn.functional.interpolate(
+        attentions.unsqueeze(0),
+        scale_factor=patch_size,
+        mode="nearest",
+    )[0]
+
+    rows = int(math.sqrt(num_heads))
+    cols = math.ceil(num_heads / rows)
+    fig, axs = plt.subplots(rows, cols)
+    flattened_axs = axs.reshape(-1)
+    acc_attention = torch.zeros_like(attentions[0])
+    for j in range(num_heads):
+        flattened_axs[j].imshow(attentions[j], cmap="viridis", interpolation="nearest")
+        flattened_axs[j].axis("off")
+        flattened_axs[j].set_title(f"Head {j+1}")
+        acc_attention += attentions[j]
+
+    plt.tight_layout()
+    plt.savefig(output_dir / "attentions_heads.pdf")
+    plt.close(fig)
+
+    fig, axs = plt.subplots()
+    axs.imshow(acc_attention / torch.sum(acc_attention))
+    plt.axis("off")
+    plt.tight_layout()
+    plt.savefig(output_dir / "attention_segmentation.pdf")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="DINO visualizations.")
+
     parser.add_argument(
-        "--output-dir", "-o", type=str, required=True, help="Directory to save the results.",
+        "--type",
+        "-t",
+        type=str,
+        choices=["augmentations", "attention"],
+        default="attention",
     )
+
     parser.add_argument(
-        "--image-path", "-i", type=str, required=True, help="Path to the input image.",
+        "--image-path",
+        "-i",
+        type=str,
+        required=True,
+        help="Path to the input image.",
     )
+
+    parser.add_argument(
+        "--output-dir",
+        "-o",
+        type=str,
+        required=True,
+        help="Directory to save the results.",
+    )
+
     args = parser.parse_args()
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
-
     img = Image.open(args.image_path).convert("RGB")
     transform = v2.Compose(
         [
@@ -113,8 +155,22 @@ def main() -> None:
         ],
     )
     tensor_image = transform(img)
-    plot_original_image(tensor_image, Path(args.output_dir))
-    plot_augmentations(tensor_image, Path(args.output_dir))
+    if args.type == "augmentations":
+        plot_original_image(tensor_image, Path(args.output_dir))
+        plot_augmentations(tensor_image, Path(args.output_dir))
+    elif args.type == "attention":
+        # TODO: Load custom model
+        model = torch.hub.load("facebookresearch/dino:main", "dino_vits8")
+        patch_size = 8
+        plot_original_image(tensor_image, Path(args.output_dir))
+        plot_attention(
+            tensor_image,
+            Path(args.output_dir),
+            model,
+            patch_size,
+            layer=-1,
+            threshold=0.8,
+        )
 
 
 if __name__ == "__main__":
