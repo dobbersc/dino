@@ -55,7 +55,7 @@ class DINOLoss(DistillationLoss):
         output_size: int,
         student_temperature: float | Scheduler[float] = 0.1,
         teacher_temperature: float | Scheduler[float] = 0.04,
-        center_momentum: float | Scheduler[float] = 0.9,
+        center_momentum: float | Scheduler[float] | None = 0.9,
     ) -> None:
         """Initializes a DINOLoss.
 
@@ -67,7 +67,7 @@ class DINOLoss(DistillationLoss):
             teacher_temperature: The temperature for scaling the teacher's logits with a sharpened softmax.
                 Supports constant and scheduled temperatures. Defaults to 0.04.
             center_momentum: The momentum for updating the moving average of teacher's logits centers.
-                Support constant and scheduled momentums. Defaults to 0.9.
+                Support constant and scheduled momentums. If None, no centering will be applied. Defaults to 0.9.
         """
         super().__init__()
 
@@ -93,6 +93,9 @@ class DINOLoss(DistillationLoss):
         Args:
             teacher_output: The teacher model's logits. Shape: [batch_size, #global_views, output_size].
         """
+        if self.center_momentum is None:
+            return
+
         center_momentum: float = self.center_momentum.get_value()
 
         batch_center: Tensor = teacher_output.mean(dim=(0, 1))
@@ -172,8 +175,11 @@ class DINOLoss(DistillationLoss):
 
     @property
     def schedulers(self) -> dict[str, Scheduler[float]]:
-        return {
+        schedulers: dict[str, Scheduler[float]] = {
             "student_temperature": self.student_temperature,
             "teacher_temperature": self.teacher_temperature,
-            "center_momentum": self.center_momentum,
         }
+        if self.center_momentum is not None:
+            schedulers["center_momentum"] = self.center_momentum
+
+        return schedulers

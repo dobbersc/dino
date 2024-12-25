@@ -67,7 +67,8 @@ class TrainingConfig:
     teacher_temperature_final: float | None = 0.07
     teacher_temperature_warmup_epochs: int = 30
 
-    center_momentum: float = 0.9  # Constant momentum for the teacher's logits center.
+    # Constant momentum for the teacher's logits center. If None, no centering will be applied to the teacher's logits.
+    center_momentum: float | None = 0.9
 
     num_workers: int = 8
 
@@ -201,7 +202,7 @@ def train(cfg: TrainingConfig) -> None:
             loss_function_kwargs={
                 "output_size": cfg.head.output_dim,
                 "teacher_temperature": teacher_temperature,
-                "center_momentum": ConstantScheduler(max_steps=max_steps, constant=cfg.center_momentum),
+                "center_momentum": cfg.center_momentum,
             },
             device=detect_device(),
             optimizer_class=AdamW,
