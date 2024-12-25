@@ -210,10 +210,10 @@ def train(cfg: TrainingConfig) -> None:
             num_workers=cfg.num_workers,
         )
 
-    student_name = f"{cfg.model_tag}_student" if cfg.model_tag else "student"
+    student_name = f"{cfg.model_tag}-student" if cfg.model_tag else "student"
     student_with_head.save_backbone(Path(cfg.model_dir) / student_name)
 
-    teacher_name = f"{cfg.model_tag}_teacher" if cfg.model_tag else "teacher"
+    teacher_name = f"{cfg.model_tag}-teacher" if cfg.model_tag else "teacher"
     teacher_with_head.save(Path(cfg.model_dir) / teacher_name)
 
 
