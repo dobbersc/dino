@@ -3,12 +3,23 @@ import math
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+import nltk  # type: ignore[import-untyped]
 import torch
+from adjustText import adjust_text  # type: ignore[import-untyped]
+from nltk.corpus import wordnet  # type: ignore[import-untyped]
 from PIL import Image
+from sklearn.decomposition import PCA  # type: ignore[import-untyped]
+from torch.utils.data import DataLoader
 from torchvision.transforms import v2  # type: ignore[import-untyped]
+from tqdm import tqdm
 
 from dino.augmentation import DefaultGlobalAugmenter, DefaultLocalAugmenter
 from dino.utils.torch import detect_device
+
+try:
+    nltk.data.find("corpora/wordnet")
+except LookupError:
+    nltk.download("wordnet")
 
 device = detect_device()
 
@@ -119,6 +130,49 @@ def plot_attention(
     plt.axis("off")
     plt.tight_layout()
     plt.savefig(output_dir / "attention_segmentation.pdf")
+
+
+def plot_clusters(model, eval_loader: DataLoader[tuple[torch.Tensor, torch.Tensor]], output_dir: Path):
+    if hasattr(eval_loader.dataset, "classes"):
+        sums = torch.zeros(len(eval_loader.dataset.classes), model.num_features)  # Initialize a tensor to hold sums
+        normalization_factors = torch.zeros(len(eval_loader.dataset.classes))
+    else:
+        msg = "Ensure that the underlying dataset has an attributed named 'classes'."
+        raise ValueError(msg)
+    for images, targets in tqdm(eval_loader):
+        features = model(images.to(device))
+        sums.index_add_(0, index=targets, source=features)
+        normalization_factors.index_add_(0, index=targets, source=torch.ones_like(targets, dtype=torch.float))
+
+    normalization_factors[normalization_factors == 0] = 1  # avoid division by zero
+    cluster_centroids = (sums / normalization_factors[:, None]).detach().numpy()
+
+    # Calculate PCA embeddings
+    pca = PCA(n_components=2)
+    pca_result = pca.fit_transform(cluster_centroids)
+
+    # Create plots
+    fig, ax = plt.subplots()
+    ax.scatter(pca_result[:, 0], pca_result[:, 1], c="tab:blue", s=50)
+    ax.set_title("PCA Class Embeddings")
+
+    synset_names = []
+    for synset_id in eval_loader.dataset.classes:
+        synset = wordnet.synset_from_pos_and_offset("n", int(synset_id[1:]))
+        synset_names.append(synset.lemma_names()[0].replace("_", " "))
+
+    texts = []
+    for i, (x, y) in enumerate(pca_result):
+        texts.append(plt.text(x, y, synset_names[i], fontsize=8))
+
+    adjust_text(texts, arrowprops={"arrowstyle": "-", "color": "gray", "lw": 0.5})
+
+    ax.set_xticks([], [])
+    ax.set_yticks([], [])
+    ax.set_xlabel("")
+    ax.set_ylabel("")
+    plt.tight_layout()
+    plt.savefig(output_dir / "cluster_centroids_pca.pdf")
 
 
 def main() -> None:
