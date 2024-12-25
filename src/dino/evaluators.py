@@ -37,8 +37,8 @@ class KNNEvaluator(Evaluator):
         self.model.to(device)
         self.model.eval()
 
-        train_features, train_targets = self._extract_features(self.train_loader, device)
-        eval_features, eval_targets = self._extract_features(self.eval_loader, device)
+        train_features, train_targets = self._extract_features(self.train_loader, device, split="train")
+        eval_features, eval_targets = self._extract_features(self.eval_loader, device, split="validation")
 
         logger.info("Fitting KNN model ...")
         knn = KNeighborsClassifier(n_neighbors=k, weights="distance")
@@ -51,11 +51,11 @@ class KNNEvaluator(Evaluator):
         return float(accuracy_score(eval_targets, predictions, normalize=True))
 
     def _extract_features(
-        self, loader: DataLoader[Batch], device: torch.device,
+        self, loader: DataLoader[Batch], device: torch.device, split: str
     ) -> tuple[list[NDArray[Any]], list[NDArray[Any]]]:
         features, targets = [], []
-        logger.info("Extracting features ...")
-        for images, targets_ in tqdm(loader):
+        logger.info("Extracting %s features ...", split)
+        for images, targets_ in tqdm(loader, desc="Extracting Features", unit="batch"):
             # Move images to the appropriate device
             images = images.to(device)
 
