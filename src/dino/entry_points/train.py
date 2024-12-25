@@ -39,6 +39,7 @@ logger: logging.Logger = logging.getLogger(__name__)
 class TrainingConfig:
     model_dir: str = str(Path.cwd() / "models")
     model_tag: str | None = None
+    experiment_tag: str = "dino training"
 
     dataset: DatasetConfig = field(default_factory=DatasetConfig)
 
@@ -83,10 +84,12 @@ def build_post_epoch_evaluator(cfg: TrainingConfig) -> Callable[[nn.Module], dic
         return None
 
     train_dataset: Dataset[tuple[Tensor, Tensor]] = ImageFolder(
-        Path(cfg.evaluation_dataset_dir) / cfg.evaluation_dataset_train, transform=val_transform,
+        Path(cfg.evaluation_dataset_dir) / cfg.evaluation_dataset_train,
+        transform=val_transform,
     )
     validation_dataset: Dataset[tuple[Tensor, Tensor]] = ImageFolder(
-        Path(cfg.evaluation_dataset_dir) / cfg.evaluation_dataset_validation, transform=val_transform,
+        Path(cfg.evaluation_dataset_dir) / cfg.evaluation_dataset_validation,
+        transform=val_transform,
     )
 
     train_data_loader: DataLoader[tuple[Tensor, Tensor]] = DataLoader(
@@ -186,9 +189,9 @@ def train(cfg: TrainingConfig) -> None:
 
     # Initialize mlflow and create run context.
     mlflow.set_tracking_uri(Path.cwd() / "runs")
-    mlflow.set_experiment("model_training")
+    mlflow.set_experiment(cfg.experiment_tag)
 
-    with mlflow.start_run(run_name=f"dino training {cfg.model_tag}"):
+    with mlflow.start_run(run_name=cfg.model_tag):
         # Log configuration parameters.
         log_hydra_config_to_mlflow(cfg)
 
