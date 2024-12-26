@@ -5,7 +5,6 @@ from pathlib import Path
 import timm
 import torch
 from hydra.core.config_store import ConfigStore
-from omegaconf import MISSING
 from torch import nn
 
 from dino.utils.torch import load_model, save_model
@@ -13,30 +12,28 @@ from dino.utils.torch import load_model, save_model
 
 class ModelType(Enum):
     VIT_DINO_S = "vit-dino-s"
-    VIT_T = "vit-t"
-    VIT_S = "vit-s"
-    VIT_B = "vit-b"
     DEIT_S = "deit-s"
     RESNET_50 = "resnet-50"
 
 
 class HeadType(Enum):
     LINEAR = "linear"
-    MLP = "mlp"
+    DINO_HEAD = "dino_head"
 
 
 @dataclass
 class BackboneConfig:
-    model_type: ModelType = MISSING
-    pretrained_weights: str | None = None
+    model_type: ModelType = ModelType.DEIT_S
+    weights: str | None = None
+    pretrained: bool = False
 
 
 @dataclass
 class HeadConfig:
-    model_type: HeadType = MISSING
-    output_dim: int | None = MISSING
-    pretrained_weights: str | None = None
+    model_type: HeadType = HeadType.DINO_HEAD
+    output_dim: int = 4096
     hidden_dim: int = 2048
+    weights: str | None = None
 
 
 _cs = ConfigStore.instance()
@@ -222,61 +219,49 @@ class ModelWithHead(nn.Module):
 
 
 def load_model_with_head(
-    model_type: ModelType,
-    head_type: HeadType,
-    output_dim: int,
-    head_weights: str | Path | None = None,
-    hidden_dim: int = 2048,
-    backbone_weights: str | Path | None = None,
+    backbone_cfg: BackboneConfig,
+    head_cfg: HeadConfig,
 ) -> ModelWithHead:
-    backbone = load_backbone(
-        model_type,
-        weights=backbone_weights,
+    backbone = load_backbone(backbone_cfg)
+    embed_dim = (
+        backbone.num_features
+        if hasattr(backbone, "num_features")
+        else _get_embed_dim(backbone_cfg.model_type)
     )
-    embed_dim = _get_embed_dim(model_type)
-    head = _load_head(head_type, embed_dim, output_dim, head_weights, hidden_dim)
+    head = _load_head(
+        head_cfg.model_type,
+        embed_dim,
+        head_cfg.output_dim,
+        head_cfg.hidden_dim,
+        head_cfg.weights,
+    )
 
     return ModelWithHead(backbone, head)
 
 
-def load_backbone(
-    model_type: ModelType,
-    weights: str | Path | None = None,
-) -> nn.Module:
-    match model_type:
+def load_backbone(cfg: BackboneConfig) -> nn.Module:
+    match cfg.model_type:
         case ModelType.VIT_DINO_S:
             model = torch.hub.load("facebookresearch/dino:main", "dino_vits8")
-        case ModelType.VIT_T:
-            model = timm.create_model("vit_tiny_patch16_224", pretrained=False)
-        case ModelType.VIT_S:
-            model = timm.create_model("vit_small_patch16_224", pretrained=False)
-        case ModelType.VIT_B:
-            model = timm.create_model("vit_base_patch16_224", pretrained=False)
         case ModelType.DEIT_S:
-            backbone = timm.create_model(
+            model = timm.create_model(
                 "deit_small_patch16_224",
                 num_classes=0,
                 dynamic_img_size=True,
-                pretrained=False,
-            )
-            head_hidden_dim: int = 2048
-            head_output_dim: int = 4096
-            model = ModelWithHead(
-                    model=backbone,
-                    head=DINOHead(
-                        input_dim=backbone.num_features,
-                        output_dim=head_output_dim,
-                        hidden_dim=head_hidden_dim,
-                ),
+                pretrained=cfg.pretrained,
             )
         case ModelType.RESNET_50:
-            model = timm.create_model("resnet50", pretrained=False)
+            model = timm.create_model(
+                "resnet50",
+                num_classes=0,
+                pretrained=cfg.pretrained,
+            )
         case _:
-            msg = f"Model type {model_type} is not supported"
+            msg = f"Model type {cfg.model_type} is not supported"
             raise NotImplementedError(msg)
 
-    if weights is not None:
-        state_dict = load_model(weights)
+    if cfg.weights is not None:
+        state_dict = load_model(cfg.weights)
         model.load_state_dict(state_dict)
 
     return model
@@ -286,13 +271,13 @@ def _load_head(
     head_type: HeadType,
     embed_dim: int,
     output_dim: int,
-    weights: str | None = None,
     hidden_dim: int = 2048,
+    weights: str | None = None,
 ) -> nn.Module:
     match head_type:
         case HeadType.LINEAR:
             head = LinearHead(embed_dim, output_dim)
-        case HeadType.MLP:
+        case HeadType.DINO_HEAD:
             head = DINOHead(embed_dim, output_dim=output_dim, hidden_dim=hidden_dim)
         case _:
             msg = f"Head type {head_type} is not supported"
@@ -309,12 +294,6 @@ def _get_embed_dim(model_type: ModelType) -> int:
     match model_type:
         case ModelType.VIT_DINO_S:
             return 384
-        case ModelType.VIT_T:
-            return 192
-        case ModelType.VIT_S:
-            return 384
-        case ModelType.VIT_B:
-            return 768
         case ModelType.DEIT_S:
             return 384
         case ModelType.RESNET_50:

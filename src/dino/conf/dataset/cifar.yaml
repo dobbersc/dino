@@ -1,6 +1,0 @@
-defaults:
-  - base_dataset
-   
-type_: CIFAR10
-transform: DEFAULT
-data_dir: ${hydra:runtime.cwd}/data

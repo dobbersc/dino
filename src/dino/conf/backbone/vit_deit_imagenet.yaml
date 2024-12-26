@@ -1,5 +1,0 @@
-defaults:
-  - base_backbone
-
-model_type: DEIT_S
-pretrained_weights: null

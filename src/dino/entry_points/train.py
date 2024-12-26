@@ -1,23 +1,31 @@
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import timm
+import hydra
+import mlflow
 from hydra.core.config_store import ConfigStore
-from omegaconf import MISSING
+from omegaconf import OmegaConf
 from torch.optim import AdamW
 from torchvision.datasets import ImageFolder
 from torchvision.transforms import v2
 
-from dino.datasets import UnlabelledDataset
-from dino.models import DINOHead, ModelWithHead
+from dino.datasets import DatasetConfig, UnlabelledDataset
+from dino.models import BackboneConfig, HeadConfig, load_model_with_head
 from dino.trainer import DINOTrainer
+from dino.utils.logging import log_hydra_config_to_mlflow
 from dino.utils.random import set_seed
-from dino.utils.torch import detect_device, save_model
+from dino.utils.schedulers import (
+    ConstantScheduler,
+    CosineScheduler,
+    LinearScheduler,
+    Scheduler,
+    SequentialScheduler,
+)
+from dino.utils.torch import detect_device
 
 if TYPE_CHECKING:
-    from timm.models import ResNet, VisionTransformer
     from torch import Tensor
     from torch.utils.data import Dataset
 
@@ -28,70 +36,52 @@ logger: logging.Logger = logging.getLogger(__name__)
 class TrainingConfig:
     model_dir: str = str(Path.cwd() / "models")
     model_tag: str | None = None
-    dataset_dir: str = MISSING
+
+    dataset: DatasetConfig = field(default_factory=DatasetConfig)
+
+    backbone: BackboneConfig = field(default_factory=BackboneConfig)
+    head: HeadConfig = field(default_factory=HeadConfig)
+
+    batch_size: int = 128
+    max_epochs: int = 100
+
+    teacher_momentum_initial: float = 0.996
+    teacher_momentum_final: float | None = (
+        1.0  # teacher momentum scheduler final value (optional) -> Constant or Cosine Scheduler
+    )
+
+    teacher_temp: float = 0.04  # teacher temperature, constant value
+    teacher_temp_warmup: float = (
+        0.04  # teacher temperature initial warmup value, linearly increasing
+    )
+    teacher_temp_warmup_epochs: int = 0  # teacher temperature warmup epochs
+
+    center_momentum: float = 0.9  # center momentum constant value
 
 
 _cs = ConfigStore.instance()
 _cs.store(
-    group="train",
     name="base_train",
     node=TrainingConfig,
 )
 
 
+@hydra.main(version_base=None, config_path="../conf", config_name="train_config")
 def train(cfg: TrainingConfig) -> None:
+    logger.info(OmegaConf.to_yaml(cfg))
+    cfg = OmegaConf.to_object(cfg)
     set_seed(42)
 
-    head_hidden_dim: int = 2048
-    head_output_dim: int = 4096
-    batch_size: int = 128
-
-    pretrained: bool = False
-    model_name: str = "deit_small_patch16_224"
-
-    student: ResNet | VisionTransformer
-    teacher: ResNet | VisionTransformer
-    if "resnet" in model_name:
-        student = timm.create_model(model_name, num_classes=0, pretrained=pretrained)
-        teacher = timm.create_model(model_name, num_classes=0, pretrained=pretrained)
-    else:
-        student = timm.create_model(
-            model_name,
-            num_classes=0,
-            dynamic_img_size=True,
-            pretrained=pretrained,
-        )
-        teacher = timm.create_model(
-            model_name,
-            num_classes=0,
-            dynamic_img_size=True,
-            pretrained=pretrained,
-        )
-
-    msg = f"{cfg.dataset_dir}; {model_name=}; {pretrained=}"
+    student_with_head = load_model_with_head(cfg.backbone, cfg.head)
+    teacher_with_head = load_model_with_head(cfg.backbone, cfg.head)
+    msg = f"{cfg.dataset.data_dir}; {cfg.backbone.model_type=}; {cfg.backbone.pretrained=}"
     logger.info(msg)
-
-    student_with_head: ModelWithHead = ModelWithHead(
-        model=student,
-        head=DINOHead(
-            input_dim=student.num_features,
-            output_dim=head_output_dim,
-            hidden_dim=head_hidden_dim,
-        ),
-    )
-    teacher_with_head: ModelWithHead = ModelWithHead(
-        model=teacher,
-        head=DINOHead(
-            input_dim=teacher.num_features,
-            output_dim=head_output_dim,
-            hidden_dim=head_hidden_dim,
-        ),
-    )
 
     teacher_with_head.load_state_dict(student_with_head.state_dict())
 
+    # for more flexible dataset configuration: dataset = dino.datasets.get_dataset(cfg.dataset)
     dataset: Dataset[Tensor] = UnlabelledDataset(
-        dataset=ImageFolder(cfg.dataset_dir, transform=v2.ToImage()),
+        dataset=ImageFolder(cfg.dataset.data_dir, transform=v2.ToImage()),
     )
 
     trainer: DINOTrainer = DINOTrainer(
@@ -99,18 +89,69 @@ def train(cfg: TrainingConfig) -> None:
         teacher=teacher_with_head,
         view_dataset=dataset,
     )
-    trainer.train(
-        max_epochs=100,
-        batch_size=batch_size,
-        loss_function_kwargs={"output_size": head_output_dim},
-        device=detect_device(),
-        optimizer_class=AdamW,
-        optimizer_kwargs={"lr": 0.0005 * batch_size / 256},
-        num_workers=8,
+
+    # the step counter is increased after each batch for teacher_momentum and loss_function
+    # The dino loss updates the the teacher's temperature and center momentum for each step.
+    # calculate n_batches per epoch for the internal view_dataset:
+    steps_per_epoch = len(trainer.view_dataset) // cfg.batch_size
+
+    max_steps: int = steps_per_epoch * cfg.max_epochs
+    teacher_momentum: Scheduler[float] = (
+        ConstantScheduler(constant=cfg.teacher_momentum_initial)
+        if cfg.teacher_momentum_final is None
+        else CosineScheduler(
+            max_steps=max_steps,
+            initial=cfg.teacher_momentum_initial,
+            final=cfg.teacher_momentum_final,
+        )
     )
 
+    msg = f"Using teacher momentum scheduler: {type(teacher_momentum).__name__}"
+    logger.info(msg)
+
+    teacher_temp = ConstantScheduler(cfg.teacher_temp)
+    if cfg.teacher_temp_warmup_epochs > 0:
+        teacher_temp = SequentialScheduler(
+            [
+                # insert linearly increasing warmup scheduler
+                LinearScheduler(
+                    cfg.teacher_temp_warmup,
+                    max_steps=steps_per_epoch * cfg.teacher_temp_warmup_epochs,
+                ),
+                teacher_temp,
+            ],
+        )
+    msg = f"Using teacher temperature scheduler: {type(teacher_temp).__name__}"
+    logger.info(msg)
+
+    # Initialize MLflow and create run context
+    mlflow.set_tracking_uri(Path.cwd() / "runs")
+    mlflow.set_experiment("model_training")
+
+    with mlflow.start_run(run_name=f"dino training {cfg.model_tag}"):
+        # Log configuration parameters
+        log_hydra_config_to_mlflow(cfg)
+
+        trainer.train(
+            max_epochs=cfg.max_epochs,
+            batch_size=cfg.batch_size,
+            loss_function_kwargs={
+                "output_size": cfg.head.output_dim,
+                "teacher_temperature": teacher_temp,
+                "center_momentum": ConstantScheduler(cfg.center_momentum),
+            },
+            device=detect_device(),
+            optimizer_class=AdamW,
+            optimizer_kwargs={
+                "lr": 0.0005 * cfg.batch_size / 256,
+                "weight_decay": 0.04,  # Max: 0.4 TODO: Scheduler this as well
+            },
+            teacher_momentum=teacher_momentum,
+            num_workers=8,
+        )
+
     student_name = f"{cfg.model_tag}_student" if cfg.model_tag else "student"
-    save_model(student_with_head, Path(cfg.model_dir) / student_name)
+    student_with_head.save_backbone(Path(cfg.model_dir) / student_name)
 
     teacher_name = f"{cfg.model_tag}_teacher" if cfg.model_tag else "teacher"
-    save_model(teacher_with_head, Path(cfg.model_dir) / teacher_name)
+    teacher_with_head.save(Path(cfg.model_dir) / teacher_name)

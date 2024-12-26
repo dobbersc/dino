@@ -1,6 +1,0 @@
-defaults:
-  - base_dataset
-   
-type_: IMAGE_FOLDER
-transform: DEFAULT
-data_dir: ${hydra:runtime.cwd}/data/tiny-imagenet-200/train
