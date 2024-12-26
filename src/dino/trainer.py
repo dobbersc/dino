@@ -182,7 +182,7 @@ class DINOTrainer:
                 "train_batch",
                 metrics={
                     "epoch": epoch,
-                    "loss": aggregated_loss / batch_index,
+                    "loss": loss,
                     "learning_rate": optimizer.param_groups[0]["lr"],
                     "teacher_momentum": teacher_momentum_scheduler.get_value(),
                     **({"weight_decay": effective_weight_decay} if effective_weight_decay is not None else {}),
