@@ -252,11 +252,7 @@ class ImageNetDirectoryDataset(Dataset[tuple[Image | torch.Tensor, int]]):
 
         train_indices, val_indices = get_split_indices(all_samples, split_ratio)
 
-        self.samples = (
-            [all_samples[i] for i in train_indices]
-            if train
-            else [all_samples[i] for i in val_indices]
-        )
+        self.samples = [all_samples[i] for i in train_indices] if train else [all_samples[i] for i in val_indices]
 
         # for debugging
         if sample_classes_indices is not None:

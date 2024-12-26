@@ -49,9 +49,13 @@ class Scheduler(ABC, Generic[_T]):
     def current_step(self) -> int:
         return self._current_step
 
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}(max_steps={self.max_steps!r})"
+
 
 class SequentialScheduler(Scheduler[_T]):
     """Utility scheduler that enables the sequential execution of multiple schedulers.
+
     Milestone points control the exact intervals when the scheduler is active.
     """
 
@@ -112,6 +116,9 @@ class SequentialScheduler(Scheduler[_T]):
         index: int = bisect_right(self.milestones, self.current_step)
         return self.schedulers[index]
 
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}(schedulers={self.schedulers!r}, milestones={self.milestones!r})"
+
 
 class ConstantScheduler(Scheduler[_T]):
     def __init__(self, constant: _T, max_steps: int | None = None) -> None:
@@ -124,7 +131,6 @@ class ConstantScheduler(Scheduler[_T]):
 
 
 class LinearScheduler(Scheduler[float]):
-
     def __init__(self, max_steps: int, initial: float, final: float) -> None:
         """Initializes a LinearScheduler.
 
@@ -144,6 +150,9 @@ class LinearScheduler(Scheduler[float]):
         t_max: int = self._max_steps - 1
         offset: float = (self.final - self.initial) * (self.current_step / t_max)
         return self.initial + offset
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}(max_steps={self.max_steps!r}, initial={self.initial!r}, final={self.final!r})"
 
 
 class CosineScheduler(Scheduler[float]):
@@ -168,3 +177,6 @@ class CosineScheduler(Scheduler[float]):
             0.5 * (self.initial - self.final) * (1 + np.cos(np.pi * (self._current_step / t_max)))
         )
         return self.final + offset.item()
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}(max_steps={self.max_steps!r}, initial={self.initial!r}, final={self.final!r})"

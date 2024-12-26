@@ -182,5 +182,5 @@ data/
 output/
 outputs/
 
-# mlflow runs directory
+# MLflow runs directory
 runs/

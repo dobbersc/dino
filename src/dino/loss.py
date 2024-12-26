@@ -1,5 +1,6 @@
 import itertools
 from abc import ABC, abstractmethod
+from typing import Any
 
 import torch
 from torch import Tensor, nn
@@ -35,6 +36,12 @@ class DistillationLoss(nn.Module, ABC):
 
     def step(self) -> None:
         """Informs the internal schedulers to take a step in the schedule."""
+        for scheduler in self.schedulers.values():
+            scheduler.step()
+
+    @property
+    def schedulers(self) -> dict[str, Scheduler[Any]]:
+        return {}
 
 
 class DINOLoss(DistillationLoss):
@@ -163,7 +170,10 @@ class DINOLoss(DistillationLoss):
         self.update_center(teacher_output)
         return average_loss, inspection_metrics
 
-    def step(self) -> None:
-        self.student_temperature.step()
-        self.teacher_temperature.step()
-        self.center_momentum.step()
+    @property
+    def schedulers(self) -> dict[str, Scheduler[float]]:
+        return {
+            "student_temperature": self.student_temperature,
+            "teacher_temperature": self.teacher_temperature,
+            "center_momentum": self.center_momentum,
+        }

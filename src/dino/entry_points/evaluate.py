@@ -105,11 +105,7 @@ def evaluate(cfg: EvaluationConfig) -> None:
         logger.info("Loaded linear eval dataset: len(eval_ds)=%d", len(eval_ds))
 
         logger.info("Running linear evaluation")
-        output_dim = (
-            cfg.num_classes
-            if cfg.num_classes is not None
-            else getattr(train_ds, "num_classes", None)
-        )
+        output_dim = cfg.num_classes if cfg.num_classes is not None else getattr(train_ds, "num_classes", None)
         if output_dim is None:
             logger.error("Could not infer number of classes for linear evaluation")
             sys.exit(1)
