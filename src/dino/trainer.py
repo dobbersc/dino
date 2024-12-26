@@ -3,6 +3,7 @@ import logging
 import time
 import typing
 from collections import defaultdict
+from collections.abc import Callable
 from typing import Any, Final
 
 import torch
@@ -38,6 +39,7 @@ class DINOTrainer:
         view_dataset: Dataset[Tensor],
         local_augmenter: Augmenter | None = None,
         global_augmenter: Augmenter | None = None,
+        after_epoch_evaluator: Callable[[nn.Module], dict[str, float]] | None = None,
     ) -> None:
         self.student = student
         self.teacher = teacher
@@ -47,6 +49,8 @@ class DINOTrainer:
             local_augmenter=DefaultLocalAugmenter() if local_augmenter is None else local_augmenter,
             global_augmenter=DefaultGlobalAugmenter() if global_augmenter is None else global_augmenter,
         )
+
+        self.after_epoch_evaluator = after_epoch_evaluator
 
     def _log_parameters(self, max_epochs: int, batch_size: int, num_workers: int, device: torch.device) -> None:
         logger.info(LOG_SEPARATOR)
@@ -229,7 +233,7 @@ class DINOTrainer:
             aggregated_inspection_metrics[key] /= len(data_loader)
         return aggregated_loss / len(data_loader), aggregated_inspection_metrics
 
-    def train(
+    def train(  # noqa: PLR0915
         self,
         max_epochs: int,
         batch_size: int,
@@ -319,6 +323,19 @@ class DINOTrainer:
                     device=device,
                 )
 
+                student_scores: dict[str, float]
+                teacher_scores: dict[str, float]
+                if self.after_epoch_evaluator is not None:
+                    logger.info(LOG_SEPARATOR)
+                    logger.info("STUDENT EVALUATION")
+                    student_scores = self.after_epoch_evaluator(self.student)
+
+                    logger.info(LOG_SEPARATOR)
+                    logger.info("TEACHER EVALUATION")
+                    teacher_scores = self.after_epoch_evaluator(self.teacher)
+                else:
+                    student_scores, teacher_scores = {}, {}
+
                 logger.info(LOG_SEPARATOR)
                 logger.info("EPOCH %d DONE", epoch)
                 logger.info("Loss: %.8f", loss)
@@ -326,7 +343,35 @@ class DINOTrainer:
                     name: str = "KL Divergence" if key == "kl_divergence" else key.replace("_", " ").title()
                     logger.info("%s: %.8f", name, value)
 
-                mlflow_log_metrics("train_epoch", metrics={"loss": loss, **inspection_metrics}, step=epoch)
+                for (student_score_name, student_score), (teacher_score_name, teacher_score) in zip(
+                    student_scores.items(),
+                    teacher_scores.items(),
+                    strict=True,
+                ):
+                    if student_score_name != teacher_score_name:
+                        msg: str = (
+                            f"Mismatching order of after epoch evaluator for student score {student_score_name!r} and "
+                            f"teacher score {teacher_score_name!r}."
+                        )
+                        raise RuntimeError(msg)
+
+                    logger.info(
+                        "%s: student %.4f / teacher %.4f",
+                        student_score_name.replace("_", " ").title(),
+                        student_score,
+                        teacher_score,
+                    )
+
+                mlflow_log_metrics(
+                    "train_epoch",
+                    metrics={
+                        "loss": loss,
+                        **inspection_metrics,
+                        **{f"student_{key}": value for key, value in student_scores.items()},
+                        **{f"teacher_{key}": value for key, value in teacher_scores.items()},
+                    },
+                    step=epoch,
+                )
 
         except KeyboardInterrupt:
             logger.info(LOG_SEPARATOR)
