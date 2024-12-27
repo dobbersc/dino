@@ -34,3 +34,33 @@ nohup train \
   evaluation_dataset_dir=/vol/tmp/dobbersc-pub/imagenet100 \
   center_momentum=null \
   > logs/ms2/model-collapse-no-centering.out 2> logs/ms2/model-collapse-no-centering.err < /dev/null &
+
+# Teach Momentum 0.9
+nohup train \
+  experiment_tag=ms2 \
+  model_tag=teacher-momentum-0.9 \
+  dataset.data_dir=/vol/tmp/dobbersc-pub/imagenet100/train \
+  evaluation_dataset_dir=/vol/tmp/dobbersc-pub/imagenet100 \
+  teacher_momentum_initial=0.9 \
+  teacher_momentum_final=null \
+  > logs/ms2/teacher-momentum-0.9.out 2> logs/ms2/teacher-momentum-0.9.err < /dev/null &
+
+# Teach Momentum 0.95
+nohup train \
+  experiment_tag=ms2 \
+  model_tag=teacher-momentum-0.95 \
+  dataset.data_dir=/vol/tmp/dobbersc-pub/imagenet100/train \
+  evaluation_dataset_dir=/vol/tmp/dobbersc-pub/imagenet100 \
+  teacher_momentum_initial=0.95 \
+  teacher_momentum_final=null \
+  > logs/ms2/teacher-momentum-0.95.out 2> logs/ms2/teacher-momentum-0.95.err < /dev/null &
+
+# Teach Momentum 0.999
+nohup train \
+  experiment_tag=ms2 \
+  model_tag=teacher-momentum-0.999 \
+  dataset.data_dir=/vol/tmp/dobbersc-pub/imagenet100/train \
+  evaluation_dataset_dir=/vol/tmp/dobbersc-pub/imagenet100 \
+  teacher_momentum_initial=0.999 \
+  teacher_momentum_final=null \
+  > logs/ms2/teacher-momentum-0.999.out 2> logs/ms2/teacher-momentum-0.999.err < /dev/null &
