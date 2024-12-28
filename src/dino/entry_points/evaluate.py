@@ -21,9 +21,6 @@ from dino.utils.torch import detect_device
 logger = logging.getLogger(__name__)
 
 
-# TODO: Add num workers to datalaoders
-
-
 @dataclass
 class EvaluationConfig:
     # TODO: This is just a temporary hack without the DatasetConfig to get the dataset's original splits working.
@@ -33,6 +30,7 @@ class EvaluationConfig:
 
     backbone: BackboneConfig = field(default_factory=BackboneConfig)
     batch_size: int = 32
+    num_workers: int = 8
 
     # KNN specific
     skip_knn: bool = False
@@ -55,6 +53,7 @@ _cs.store(
 )
 
 
+# TODO: Refactor this function to also be used in the DINO train mode.
 def get_dataloaders(
     cfg: EvaluationConfig,
     transform: TransformType,
@@ -72,11 +71,13 @@ def get_dataloaders(
         train_dataset,
         batch_size=cfg.batch_size,
         shuffle=True,
+        num_workers=cfg.num_workers,
         pin_memory=True,
     )
     validation_data_loader: DataLoader[tuple[Tensor, Tensor]] = DataLoader(
         validation_dataset,
         batch_size=cfg.batch_size,
+        num_workers=cfg.num_workers,
         pin_memory=True,
     )
 
