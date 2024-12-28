@@ -16,6 +16,36 @@ nohup train \
   backbone.model_type=RESNET_50 \
   > logs/ms2/architecture-resnet50.out 2> logs/ms2/architecture-resnet50.err < /dev/null &
 
+# Architecture DeiT-Small Fully Supervised
+# Learning rate uses linear scaling rule: 0.001 * batch_size / 256.
+nohup evaluate \
+  dataset_dir=/vol/tmp/dobbersc-pub/imagenet100 \
+  skip_knn=True \
+  finetuning_mode=FULL_FINETUNE \
+  backbone.model_type=DEIT_S \
+  num_epochs=100 \
+  batch_size=128 \
+  base_lr=5e-4 \
+  backbone_lr=5e-4 \
+  model_dir=models \
+  model_tag=architecture-deit-small-supervised \
+  > logs/ms2/architecture-deit-small-supervised.out 2> logs/ms2/architecture-deit-small-supervised.err < /dev/null &
+
+# Architecture ResNet50 Fully Supervised
+# Learning rate uses linear scaling rule: 0.001 * batch_size / 256.
+nohup evaluate \
+  dataset_dir=/vol/tmp/dobbersc-pub/imagenet100 \
+  skip_knn=True \
+  finetuning_mode=FULL_FINETUNE \
+  backbone.model_type=RESNET_50 \
+  num_epochs=100 \
+  batch_size=128 \
+  base_lr=5e-4 \
+  backbone_lr=5e-4 \
+  model_dir=models \
+  model_tag=architecture-resnet50-supervised \
+  > logs/ms2/architecture-resnet50-supervised.out 2> logs/ms2/architecture-resnet50-supervised.err < /dev/null &
+
 # Model Collapse No Sharpening
 nohup train \
   experiment_tag=ms2 \
