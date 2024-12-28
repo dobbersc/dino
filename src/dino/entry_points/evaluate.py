@@ -86,8 +86,8 @@ def get_dataloaders(
 
     assert isinstance(train_dataset, Sized)
     assert isinstance(validation_dataset, Sized)
-    logger.info("Loaded knn train dataset of %d data points", len(train_dataset))
-    logger.info("Loaded knn validation dataset of %d data points", len(validation_dataset))
+    logger.info("Loaded train dataset of %d data points", len(train_dataset))
+    logger.info("Loaded validation dataset of %d data points", len(validation_dataset))
 
     return train_data_loader, validation_data_loader
 
