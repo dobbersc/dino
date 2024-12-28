@@ -90,7 +90,6 @@ def train(
         dataloader (DataLoader): The dataloader providing the training data.
         criterion (nn.Module): The loss function used for optimization.
         optimizer (optim.Optimizer): The optimizer used for model parameter updates.
-        num_epochs (int): The number of epochs to train the model. Default is 10.
         device (str): The device to use for training, e.g., "cpu" or "cuda". Default is "cpu".
     """
     model.train()
