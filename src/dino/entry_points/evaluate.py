@@ -45,6 +45,9 @@ class EvaluationConfig:
     finetuning_mode: FinetuningMode = FinetuningMode.LINEAR_PROBE
     num_epochs: int = 10
 
+    model_dir: str | None = None
+    model_tag: str | None = None
+
 
 _cs = ConfigStore.instance()
 _cs.store(
@@ -136,3 +139,7 @@ def evaluate(cfg: EvaluationConfig) -> None:
         linear_evaluator = LinearEvaluator(validation_data_loader, linear_model)
         accuracies = linear_evaluator.evaluate(topk=cfg.topk)
         logger.info("Linear evaluation accuracies: %s", accuracies)
+
+        if cfg.model_dir is not None:
+            model_name = f"{cfg.model_tag}-backbone" if cfg.model_tag else "finetune-backbone"
+            linear_model.save_backbone(Path(cfg.model_dir) / model_name)
