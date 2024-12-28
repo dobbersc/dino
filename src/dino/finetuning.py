@@ -54,7 +54,7 @@ def get_optimizer(
             # they don't show the setup for full finetuning
             optimizer_params |= {
                 "params": [
-                    {"params": model.backbone_paramters(), "lr": backbone_lr},
+                    {"params": model.backbone_parameters(), "lr": backbone_lr},
                     {"params": model.head_parameters(), "lr": base_lr},
                 ],
             }
