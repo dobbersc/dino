@@ -1,41 +1,51 @@
 import logging
-import sys
+from collections.abc import Sized
 from dataclasses import dataclass, field
+from pathlib import Path
+from typing import cast
 
 import hydra
-import torch
 from hydra.core.config_store import ConfigStore
-from omegaconf import OmegaConf
-from torch import nn
-from torch.utils.data import DataLoader
+from omegaconf import MISSING, OmegaConf
+from torch import Tensor, nn
+from torch.utils.data import DataLoader, Dataset
+from torchvision.datasets import ImageFolder
 
-from dino.datasets import DatasetConfig, TransformType, get_dataset
+from dino.datasets import TransformType, get_transform
 from dino.evaluators import KNNEvaluator, LinearEvaluator
 from dino.finetuning import FinetuningMode, finetune
 from dino.models import BackboneConfig, HeadConfig, HeadType, load_backbone, load_model_with_head
 from dino.utils.random import set_seed
+from dino.utils.torch import detect_device
 
 logger = logging.getLogger(__name__)
 
 
+# TODO: Add num workers to datalaoders
+
+
 @dataclass
 class EvaluationConfig:
-    dataset: DatasetConfig = field(default_factory=DatasetConfig)
+    # TODO: This is just a temporary hack without the DatasetConfig to get the dataset's original splits working.
+    dataset_dir: str = MISSING
+    dataset_train: str = "train"
+    dataset_validation: str = "val"
+
     backbone: BackboneConfig = field(default_factory=BackboneConfig)
     batch_size: int = 32
 
     # KNN specific
+    skip_knn: bool = False
     k: int = 5
 
     # Linear specific
+    skip_linear: bool = False
     topk: tuple[int, ...] = (1,)
     num_classes: int | None = None  # tries to infer from dataset
     base_lr: float = 1e-3
     backbone_lr: float = 1e-4
     finetuning_mode: FinetuningMode = FinetuningMode.LINEAR_PROBE
     num_epochs: int = 10
-    skip_knn: bool = False
-    skip_linear: bool = False
 
 
 _cs = ConfigStore.instance()
@@ -45,70 +55,65 @@ _cs.store(
 )
 
 
+def get_dataloaders(
+    cfg: EvaluationConfig,
+    transform: TransformType,
+) -> tuple[DataLoader[tuple[Tensor, Tensor]], DataLoader[tuple[Tensor, Tensor]]]:
+    train_dataset: Dataset[tuple[Tensor, Tensor]] = ImageFolder(
+        Path(cfg.dataset_dir) / cfg.dataset_train,
+        transform=get_transform(transform),
+    )
+    validation_dataset: Dataset[tuple[Tensor, Tensor]] = ImageFolder(
+        Path(cfg.dataset_dir) / cfg.dataset_validation,
+        transform=get_transform(transform),
+    )
+
+    train_data_loader: DataLoader[tuple[Tensor, Tensor]] = DataLoader(
+        train_dataset,
+        batch_size=cfg.batch_size,
+        shuffle=True,
+        pin_memory=True,
+    )
+    validation_data_loader: DataLoader[tuple[Tensor, Tensor]] = DataLoader(
+        validation_dataset,
+        batch_size=cfg.batch_size,
+        pin_memory=True,
+    )
+
+    assert isinstance(train_dataset, Sized)
+    assert isinstance(validation_dataset, Sized)
+    logger.info("Loaded knn train dataset of %d data points", len(train_dataset))
+    logger.info("Loaded knn validation dataset of %d data points", len(validation_dataset))
+
+    return train_data_loader, validation_data_loader
+
+
 @hydra.main(version_base=None, config_path="../conf", config_name="evaluation_config")
 def evaluate(cfg: EvaluationConfig) -> None:
     logger.info(OmegaConf.to_yaml(cfg))
-    cfg = OmegaConf.to_object(cfg)
-    set_seed(42)
+    cfg = cast(EvaluationConfig, OmegaConf.to_object(cfg))
 
     # =========== KNN evaluation ===================
     if not cfg.skip_knn:
-        cfg.dataset.train = True
-        cfg.dataset.transform = TransformType.KNN
-        train_ds = get_dataset(cfg.dataset)
-        train_loader = DataLoader(
-            train_ds,
-            batch_size=cfg.batch_size,
-            shuffle=True,
-            pin_memory=torch.cuda.is_available(),
-        )
-        logger.info("Loaded knn train dataset: len(train_ds)=%d", len(train_ds))
-
-        cfg.dataset.train = False
-        eval_ds = get_dataset(cfg.dataset)
-        eval_loader = DataLoader(
-            eval_ds,
-            batch_size=cfg.batch_size,
-            shuffle=False,
-            pin_memory=torch.cuda.is_available(),
-        )
-        logger.info("Loaded knn eval dataset: len(eval_ds)=%d", len(eval_ds))
+        set_seed(42)
 
         logger.info("Running KNN evaluation")
+        train_data_loader, validation_data_loader = get_dataloaders(cfg, transform=TransformType.KNN)
         knn_model = load_backbone(cfg.backbone)
-        evaluator = KNNEvaluator(eval_loader, train_loader, knn_model)
-        accuracy = evaluator.evaluate(k=cfg.k)
+        knn_evaluator = KNNEvaluator(validation_data_loader, train_data_loader, knn_model)
+        accuracy = knn_evaluator.evaluate(k=cfg.k)
         logger.info("KNN accuracy: %.2f", accuracy)
 
     # =========== linear evaluation ================
     if not cfg.skip_linear:
-        cfg.dataset.train = True
-        cfg.dataset.transform = TransformType.LINEAR_TRAIN
-        train_ds = get_dataset(cfg.dataset)
-        train_loader = DataLoader(
-            train_ds,
-            batch_size=cfg.batch_size,
-            shuffle=True,
-            pin_memory=torch.cuda.is_available(),
-        )
-        logger.info("Loaded linear train dataset: len(train_ds)=%d", len(train_ds))
-
-        cfg.dataset.transform = TransformType.LINEAR_VAL
-        cfg.dataset.train = False
-        eval_ds = get_dataset(cfg.dataset)
-        eval_loader = DataLoader(
-            eval_ds,
-            batch_size=cfg.batch_size,
-            shuffle=False,
-            pin_memory=torch.cuda.is_available(),
-        )
-        logger.info("Loaded linear eval dataset: len(eval_ds)=%d", len(eval_ds))
+        set_seed(42)
 
         logger.info("Running linear evaluation")
-        output_dim = cfg.num_classes if cfg.num_classes is not None else getattr(train_ds, "num_classes", None)
-        if output_dim is None:
-            logger.error("Could not infer number of classes for linear evaluation")
-            sys.exit(1)
+        train_data_loader, validation_data_loader = get_dataloaders(cfg, transform=TransformType.LINEAR_TRAIN)
+
+        train_dataset: ImageFolder = cast(ImageFolder, train_data_loader.dataset)
+        output_dim: int = cfg.num_classes or len(train_dataset.classes)
+
         linear_model = load_model_with_head(
             backbone_cfg=cfg.backbone,
             head_cfg=HeadConfig(
@@ -118,15 +123,15 @@ def evaluate(cfg: EvaluationConfig) -> None:
         )
         finetune(
             model=linear_model,
-            dataloader=train_loader,
+            dataloader=train_data_loader,
             criterion=nn.CrossEntropyLoss(),
             base_lr=cfg.base_lr,
             backbone_lr=cfg.backbone_lr,
             mode=cfg.finetuning_mode,
             num_epochs=cfg.num_epochs,
-            device=torch.device("cuda" if torch.cuda.is_available() else "cpu"),
+            device=detect_device(),
         )
 
-        evaluator = LinearEvaluator(eval_loader, linear_model)
-        accuracies = evaluator.evaluate(topk=cfg.topk)
+        linear_evaluator = LinearEvaluator(validation_data_loader, linear_model)
+        accuracies = linear_evaluator.evaluate(topk=cfg.topk)
         logger.info("Linear evaluation accuracies: %s", accuracies)

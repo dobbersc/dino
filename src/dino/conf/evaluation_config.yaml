@@ -1,11 +1,10 @@
 defaults:
   - base_evaluate
 
-dataset:
-  data_dir: ${hydra:runtime.cwd}/data/tiny-imagenet-200/train
+dataset_dir: ${hydra:runtime.cwd}/data/imagenette2
 
 backbone:
-  model_type: VIT_DINO_S
+  model_type: DEIT_S
 
 num_epochs: 10
-batch_size: 4
+batch_size: 32
