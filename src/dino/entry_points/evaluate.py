@@ -104,6 +104,8 @@ def evaluate(cfg: EvaluationConfig) -> None:
         logger.info("Running KNN evaluation")
         train_data_loader, validation_data_loader = get_dataloaders(cfg, transform=TransformType.KNN)
         knn_model = load_backbone(cfg.backbone)
+        logger.info(knn_model)
+
         knn_evaluator = KNNEvaluator(validation_data_loader, train_data_loader, knn_model)
         accuracy = knn_evaluator.evaluate(k=cfg.k)
         logger.info("KNN accuracy: %.2f", accuracy)
@@ -125,6 +127,8 @@ def evaluate(cfg: EvaluationConfig) -> None:
                 output_dim=output_dim,
             ),
         )
+        logger.info(linear_model)
+
         finetune(
             model=linear_model,
             dataloader=train_data_loader,
