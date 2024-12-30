@@ -74,6 +74,8 @@ def plot_attention(
     threshold: float = 0.5,
 ) -> None:
     img = image.unsqueeze(0)
+    
+    # Center crop image such that its dimensions are divisible by the patch size.
     h_img, w_img = img.shape[-2:]
     h_featmap, w_featmap = h_img // patch_size, w_img // patch_size
     img = v2.functional.center_crop(img, output_size=[h_featmap * patch_size, w_featmap * patch_size])
