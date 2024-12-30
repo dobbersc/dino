@@ -74,7 +74,7 @@ def plot_attention(
     img = image.unsqueeze(0)
     h_img, w_img = img.shape[-2:]
     h_featmap, w_featmap = h_img // patch_size, w_img // patch_size
-    img = img[..., : h_img * patch_size, : w_img * patch_size]  # image divisible by patch size
+    img = img[..., : h_featmap * patch_size, : w_featmap * patch_size]  # image divisible by patch size
 
     attention_maps = []
 
