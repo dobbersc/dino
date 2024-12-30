@@ -11,6 +11,7 @@ from nltk.corpus import wordnet  # type: ignore[import-untyped]
 from PIL import Image
 from sklearn.decomposition import PCA  # type: ignore[import-untyped]
 from timm.models import VisionTransformer
+from torch import Tensor
 from torch.utils.data import DataLoader
 from torchvision.transforms import v2  # type: ignore[import-untyped]
 from tqdm import tqdm
@@ -74,7 +75,7 @@ def plot_attention(
     threshold: float = 0.5,
 ) -> None:
     img = image.unsqueeze(0)
-    
+
     # Center crop image such that its dimensions are divisible by the patch size.
     h_img, w_img = img.shape[-2:]
     h_featmap, w_featmap = h_img // patch_size, w_img // patch_size
@@ -179,6 +180,20 @@ def plot_clusters(model, eval_loader: DataLoader[tuple[torch.Tensor, torch.Tenso
     plt.savefig(output_dir / "cluster_centroids_pca.pdf")
 
 
+def get_tensor_image(image_path: Path | None) -> Tensor:
+    if image_path is None:
+        raise ValueError("Provide an example image with the '--image-path' or '-i' flag.")
+
+    img = Image.open(image_path).convert("RGB")
+    transform = v2.Compose(
+        [
+            v2.ToImage(),
+            v2.ToDtype(torch.float32, scale=True),
+        ],
+    )
+    return transform(img)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="DINO visualizations.")
 
@@ -203,32 +218,26 @@ def main() -> None:
     parser.add_argument(
         "--image-path",
         "-i",
-        type=str,
-        required=True,
+        type=Path,
+        default=None,
         help="Path to the input image.",
     )
 
     parser.add_argument(
         "--output-dir",
         "-o",
-        type=str,
+        type=Path,
         required=True,
         help="Directory to save the results.",
     )
 
     args = parser.parse_args()
-    Path(args.output_dir).mkdir(parents=True, exist_ok=True)
-    img = Image.open(args.image_path).convert("RGB")
-    transform = v2.Compose(
-        [
-            v2.ToImage(),
-            v2.ToDtype(torch.float32, scale=True),
-        ],
-    )
-    tensor_image = transform(img)
+    args.output_dir.mkdir(parents=True, exist_ok=True)
+
     if args.type == "augmentations":
-        plot_original_image(tensor_image, Path(args.output_dir))
-        plot_augmentations(tensor_image, Path(args.output_dir))
+        image: Tensor = get_tensor_image(args.image_path)
+        plot_original_image(image, args.output_dir)
+        plot_augmentations(image, args.output_dir)
 
     elif args.type == "attention":
         model: VisionTransformer
@@ -243,10 +252,12 @@ def main() -> None:
         # Assume square patches.
         assert model.patch_embed.patch_size[0] == model.patch_embed.patch_size[1]
 
-        plot_original_image(tensor_image, Path(args.output_dir))
+        image: Tensor = get_tensor_image(args.image_path)
+
+        plot_original_image(image, args.output_dir)
         plot_attention(
-            image=tensor_image.to(device),
-            output_dir=Path(args.output_dir),
+            image=image.to(device),
+            output_dir=args.output_dir,
             model=model,
             patch_size=model.patch_embed.patch_size[0],
             layer=-1,
