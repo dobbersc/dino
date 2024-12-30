@@ -81,7 +81,7 @@ def plot_attention(
     attention_maps = []
 
     def get_attention_maps(_module, _module_input, module_output):
-        attention_maps.append(module_output)
+        attention_maps.append(module_output.cpu())
 
     for block in model.blocks:
         if hasattr(block.attn, "fused_attn"):
@@ -94,7 +94,7 @@ def plot_attention(
 
     attention_map = attention_maps[layer]  # (batch_size, num_heads, num_patches, num_patches)
     num_heads = attention_map.shape[1]
-    cls_attention: torch.Tensor = attention_map[0, :, 0, 1:].squeeze()  # .cpu().numpy()  # (num_heads, num_patches-1)
+    cls_attention: torch.Tensor = attention_map[0, :, 0, 1:].squeeze()  # (num_heads, num_patches-1)
     cls_attention = cls_attention / torch.sum(cls_attention, dim=-1, keepdim=True)
 
     if threshold > 0:
