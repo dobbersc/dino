@@ -192,7 +192,10 @@ def main() -> None:
         "-m",
         type=Path,
         default=None,
-        help="Path to 'deit_small_patch16_224' pretrained weights.",
+        help=(
+            "Path to 'deit_small_patch16_224' pretrained weights. "
+            "If left None, default pretrained weights will be loaded."
+        ),
     )
 
     parser.add_argument(
@@ -226,11 +229,13 @@ def main() -> None:
         plot_augmentations(tensor_image, Path(args.output_dir))
 
     elif args.type == "attention":
+        model: VisionTransformer
         if args.model_path is None:
-            raise ValueError("Specify the model path with '-m' or '--model-path.'")
+            model = timm.create_model("deit_small_patch16_224", num_classes=0, dynamic_img_size=True, pretrained=True)
+        else:
+            model = timm.create_model("deit_small_patch16_224", num_classes=0, dynamic_img_size=True)
+            model.load_state_dict(torch.load(args.model_path))
 
-        model: VisionTransformer = timm.create_model("deit_small_patch16_224", num_classes=0, dynamic_img_size=True)
-        model.load_state_dict(torch.load(args.model_path))
         model.to(device)
 
         # Assume square patches.
@@ -238,7 +243,7 @@ def main() -> None:
 
         plot_original_image(tensor_image, Path(args.output_dir))
         plot_attention(
-            image=tensor_image,
+            image=tensor_image.to(device),
             output_dir=Path(args.output_dir),
             model=model,
             patch_size=model.patch_embed.patch_size[0],
