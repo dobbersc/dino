@@ -54,7 +54,7 @@ def get_optimizer(
             # they don't show the setup for full finetuning
             optimizer_params |= {
                 "params": [
-                    {"params": model.backbone_paramters(), "lr": backbone_lr},
+                    {"params": model.backbone_parameters(), "lr": backbone_lr},
                     {"params": model.head_parameters(), "lr": base_lr},
                 ],
             }
@@ -90,7 +90,6 @@ def train(
         dataloader (DataLoader): The dataloader providing the training data.
         criterion (nn.Module): The loss function used for optimization.
         optimizer (optim.Optimizer): The optimizer used for model parameter updates.
-        num_epochs (int): The number of epochs to train the model. Default is 10.
         device (str): The device to use for training, e.g., "cpu" or "cuda". Default is "cpu".
     """
     model.train()
@@ -145,7 +144,9 @@ def finetune(
     for epoch in range(num_epochs):
         train_stats = train(model, dataloader, criterion, optimizer, device=device)
         scheduler.step()
-        if validate is not None:
-            validate(model)
+
         msg = f"Epoch [{epoch+1}/{num_epochs}] - train loss: {train_stats['loss']}"
         logger.info(msg)
+
+        if validate is not None:
+            validate(model)

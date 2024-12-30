@@ -4,4 +4,4 @@ defaults:
 model_dir: ${hydra:runtime.cwd}/models/
 model_tag: default
 dataset:
-  data_dir: ${hydra:runtime.cwd}/data/tiny-imagenet-200/train
+  data_dir: ${hydra:runtime.cwd}/data/imagenette2/train
