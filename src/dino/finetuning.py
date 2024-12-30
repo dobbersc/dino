@@ -144,7 +144,9 @@ def finetune(
     for epoch in range(num_epochs):
         train_stats = train(model, dataloader, criterion, optimizer, device=device)
         scheduler.step()
-        if validate is not None:
-            validate(model)
+
         msg = f"Epoch [{epoch+1}/{num_epochs}] - train loss: {train_stats['loss']}"
         logger.info(msg)
+
+        if validate is not None:
+            validate(model)

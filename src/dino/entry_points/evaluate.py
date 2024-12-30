@@ -108,7 +108,7 @@ def evaluate(cfg: EvaluationConfig) -> None:
 
         knn_evaluator = KNNEvaluator(validation_data_loader, train_data_loader, knn_model)
         accuracy = knn_evaluator.evaluate(k=cfg.k, device=detect_device())
-        logger.info("KNN accuracy: %.2f", accuracy)
+        logger.info("KNN accuracy: %.4f", accuracy)
 
     # =========== linear evaluation ================
     if not cfg.skip_linear:
@@ -129,6 +129,11 @@ def evaluate(cfg: EvaluationConfig) -> None:
         )
         logger.info(linear_model)
 
+        def validate(model: nn.Module) -> None:
+            linear_evaluator = LinearEvaluator(validation_data_loader, model)
+            accuracies = linear_evaluator.evaluate(topk=cfg.topk)
+            logger.info("Accuracies: %s", accuracies)
+
         finetune(
             model=linear_model,
             dataloader=train_data_loader,
@@ -138,11 +143,10 @@ def evaluate(cfg: EvaluationConfig) -> None:
             mode=cfg.finetuning_mode,
             num_epochs=cfg.num_epochs,
             device=detect_device(),
+            validate=validate,
         )
 
-        linear_evaluator = LinearEvaluator(validation_data_loader, linear_model)
-        accuracies = linear_evaluator.evaluate(topk=cfg.topk)
-        logger.info("Linear evaluation accuracies: %s", accuracies)
+        validate(linear_model)
 
         if cfg.model_dir is not None:
             model_name = f"{cfg.model_tag}-backbone" if cfg.model_tag else "finetune-backbone"
