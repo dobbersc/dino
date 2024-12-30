@@ -4,11 +4,13 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import nltk  # type: ignore[import-untyped]
+import timm
 import torch
 from adjustText import adjust_text  # type: ignore[import-untyped]
 from nltk.corpus import wordnet  # type: ignore[import-untyped]
 from PIL import Image
 from sklearn.decomposition import PCA  # type: ignore[import-untyped]
+from timm.models import VisionTransformer
 from torch.utils.data import DataLoader
 from torchvision.transforms import v2  # type: ignore[import-untyped]
 from tqdm import tqdm
@@ -185,6 +187,13 @@ def main() -> None:
         choices=["augmentations", "attention"],
         default="attention",
     )
+    parser.add_argument(
+        "--model-path",
+        "-m",
+        type=Path,
+        default=None,
+        help="Path to 'deit_small_patch16_224' pretrained weights.",
+    )
 
     parser.add_argument(
         "--image-path",
@@ -215,16 +224,24 @@ def main() -> None:
     if args.type == "augmentations":
         plot_original_image(tensor_image, Path(args.output_dir))
         plot_augmentations(tensor_image, Path(args.output_dir))
+
     elif args.type == "attention":
-        # TODO: Load custom model
-        model = torch.hub.load("facebookresearch/dino:main", "dino_vits8").to(device)
-        patch_size = 8
+        if args.model_path is None:
+            raise ValueError("Specify the model path with '-m' or '--model-path.'")
+
+        model: VisionTransformer = timm.create_model("deit_small_patch16_224", num_classes=0, dynamic_img_size=True)
+        model.load_state_dict(torch.load(args.model_path))
+        model.to(device)
+
+        # Assume square patches.
+        assert model.patch_embed.patch_size[0] == model.patch_embed.patch_size[1]
+
         plot_original_image(tensor_image, Path(args.output_dir))
         plot_attention(
-            tensor_image,
-            Path(args.output_dir),
-            model,
-            patch_size,
+            image=tensor_image,
+            output_dir=Path(args.output_dir),
+            model=model,
+            patch_size=model.patch_embed.patch_size[0],
             layer=-1,
             threshold=0.8,
         )
