@@ -107,7 +107,7 @@ def evaluate(cfg: EvaluationConfig) -> None:
         logger.info(knn_model)
 
         knn_evaluator = KNNEvaluator(validation_data_loader, train_data_loader, knn_model)
-        accuracy = knn_evaluator.evaluate(k=cfg.k)
+        accuracy = knn_evaluator.evaluate(k=cfg.k, device=detect_device())
         logger.info("KNN accuracy: %.2f", accuracy)
 
     # =========== linear evaluation ================
