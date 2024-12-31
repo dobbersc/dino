@@ -36,11 +36,25 @@ pip install git+https://github.com/dobbersc/dino@master
 
 #### Experiments
 
-Our experiments cover the training, fine-tuning and evaluation entry points. The following example commands illustrate their usage: 
+Our experiments cover the training and evaluation entry points. The following example commands illustrate their usage: 
+After locally installing the package you can run two scripts `train` and `evaluate` with different configurations. Both scripts are configurable via the hydra interface.
 
-- Training: `dino cmd=train train.dataset_dir=/path/to/dataset/train/`
-- Fine-Tuning: `dino cmd=finetune dataset@finetune.dataset=imagenet finetune.dataset.data_dir=/path/to/dataset/train/`
-- Evaluation: `dino cmd=evaluate evaluate=knn dataset@evaluate.dataset=imagenet evaluate.dataset.data_dir=/path/to/dataset/test`
+**Training:**   
+For a basic training run just specify the path to the dataset, which then will interpreted as an Image folder, as known from imagenet:  
+```bash 
+train train.dataset_dir=/path/to/dataset/
+```
+
+If you want to change any concrete parameters, just override e.g. `train teacher_temp=0.08`. For a detailed overview of all configurable parameters, just run `train --help`. The resulting model then is saved to the `model_dir` which then later can used be further evaluation.
+During the run logs are saved within the `outputs/`directory, metrics are additionally logged with mlflow to `runs/`.
+You can visualize this directory with `mlflow ui --backend-store-uri path/to/runs`
+
+**Evaluation:** 
+For evaluation specify the data_dir and the path to the model weights:
+```bash
+evaluate dataset.data_dir=/path/to/dataset backbone.weights=/path/to/weights
+```
+This runs the linear probing as well as the knn evaluation. If you want to override any defaults consult `evaluate --help` for all configurable parameters. `evaluate` also allows to run basic learning functionality to train supervised models.
 
 *Note: We provide some SLURM scripts in the `script` directory.*
 
