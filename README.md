@@ -68,8 +68,8 @@ mlflow ui --backend-store-uri path/to/runs
 ---
 
 #### **Evaluation**
-To evaluate a model, specify the dataset and the model weights:
-For the dataset two subdirectories `dataset_train` (=train) and `dataset_val` (=val) are expected.
+To evaluate a model, specify the dataset and the model weights.
+For the dataset two subdirectories `dataset_train` (=train) and `dataset_val` (=val) are expected:
 
 ```bash
 evaluate dataset_dir=/path/to/dataset backbone.weights=/path/to/weights
