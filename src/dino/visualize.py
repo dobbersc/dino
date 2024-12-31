@@ -12,7 +12,8 @@ from PIL import Image
 from sklearn.decomposition import PCA  # type: ignore[import-untyped]
 from timm.models import VisionTransformer
 from torch import Tensor
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset
+from torchvision.datasets import ImageFolder
 from torchvision.transforms import v2  # type: ignore[import-untyped]
 from tqdm import tqdm
 
@@ -194,6 +195,15 @@ def get_tensor_image(image_path: Path | None) -> Tensor:
     return transform(img)
 
 
+def get_model(model_path: Path | None) -> VisionTransformer:
+    if model_path is None:
+        return timm.create_model("deit_small_patch16_224", num_classes=0, dynamic_img_size=True, pretrained=True)
+
+    model = timm.create_model("deit_small_patch16_224", num_classes=0, dynamic_img_size=True)
+    model.load_state_dict(torch.load(model_path))
+    return model
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="DINO visualizations.")
 
@@ -201,9 +211,10 @@ def main() -> None:
         "--type",
         "-t",
         type=str,
-        choices=["augmentations", "attention"],
+        choices=["augmentations", "attention", "clusters"],
         default="attention",
     )
+
     parser.add_argument(
         "--model-path",
         "-m",
@@ -211,7 +222,7 @@ def main() -> None:
         default=None,
         help=(
             "Path to 'deit_small_patch16_224' pretrained weights. "
-            "If left None, default pretrained weights will be loaded."
+            "If left None, default pretrained weights will be loaded. Used for the 'attention' mode."
         ),
     )
 
@@ -220,7 +231,15 @@ def main() -> None:
         "-i",
         type=Path,
         default=None,
-        help="Path to the input image.",
+        help="Path to the input image. Used for the 'augmentations' and 'attention' mode.",
+    )
+
+    parser.add_argument(
+        "--dataset-dir",
+        "-d",
+        type=Path,
+        default=None,
+        help="Path to a dataset directory. Used for the 'clusters' mode.",
     )
 
     parser.add_argument(
@@ -240,13 +259,7 @@ def main() -> None:
         plot_augmentations(image, args.output_dir)
 
     elif args.type == "attention":
-        model: VisionTransformer
-        if args.model_path is None:
-            model = timm.create_model("deit_small_patch16_224", num_classes=0, dynamic_img_size=True, pretrained=True)
-        else:
-            model = timm.create_model("deit_small_patch16_224", num_classes=0, dynamic_img_size=True)
-            model.load_state_dict(torch.load(args.model_path))
-
+        model: VisionTransformer = get_model(args.model_path)
         model.to(device)
 
         # Assume square patches.
@@ -263,6 +276,29 @@ def main() -> None:
             layer=-1,
             threshold=0.8,
         )
+
+    elif args.type == "clusters":
+        if args.dataset_dir is None:
+            raise ValueError("Provide a dataset directory with the '--dataset-dir' or '-d' flag.")
+
+        transform = v2.Compose(
+            [
+                v2.Resize((480, 480)),
+                v2.ToImage(),
+                v2.ToDtype(torch.float32, scale=True),
+                v2.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+            ],
+        )
+
+        dataset: Dataset[tuple[Tensor, Tensor]] = ImageFolder(args.dataset_dir, transform=transform)
+        data_loader: DataLoader[tuple[Tensor, Tensor]] = DataLoader(
+            dataset, batch_size=512, num_workers=8, pin_memory=True
+        )
+
+        model: VisionTransformer = get_model(args.model_path)
+        model.to(device)
+
+        plot_clusters(model, data_loader, args.output_dir)
 
 
 if __name__ == "__main__":
