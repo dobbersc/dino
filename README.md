@@ -69,9 +69,10 @@ mlflow ui --backend-store-uri path/to/runs
 
 #### **Evaluation**
 To evaluate a model, specify the dataset and the model weights:
+For the dataset two subdirectories `dataset_train` (=train) and `dataset_val` (=val) are expected.
 
 ```bash
-evaluate dataset.data_dir=/path/to/dataset backbone.weights=/path/to/weights
+evaluate dataset_dir=/path/to/dataset backbone.weights=/path/to/weights
 ```
 
 This script performs linear probing and k-NN evaluation by default. For customization options, run:
