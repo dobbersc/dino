@@ -50,7 +50,7 @@ train train.dataset_dir=/path/to/dataset/
 Override parameters as needed, e.g.,:
 
 ```bash
-train train.teacher_temp=0.08
+train teacher_temp=0.08
 ```
 
 For a full list of configurable parameters, run:
