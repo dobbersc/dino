@@ -4,12 +4,16 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import nltk  # type: ignore[import-untyped]
+import timm
 import torch
 from adjustText import adjust_text  # type: ignore[import-untyped]
 from nltk.corpus import wordnet  # type: ignore[import-untyped]
 from PIL import Image
 from sklearn.decomposition import PCA  # type: ignore[import-untyped]
-from torch.utils.data import DataLoader
+from timm.models import VisionTransformer
+from torch import Tensor
+from torch.utils.data import DataLoader, Dataset
+from torchvision.datasets import ImageFolder
 from torchvision.transforms import v2  # type: ignore[import-untyped]
 from tqdm import tqdm
 
@@ -72,14 +76,16 @@ def plot_attention(
     threshold: float = 0.5,
 ) -> None:
     img = image.unsqueeze(0)
+
+    # Center crop image such that its dimensions are divisible by the patch size.
     h_img, w_img = img.shape[-2:]
     h_featmap, w_featmap = h_img // patch_size, w_img // patch_size
-    img = img[..., : h_featmap * patch_size, : w_featmap * patch_size]  # image divisible by patch size
+    img = v2.functional.center_crop(img, output_size=[h_featmap * patch_size, w_featmap * patch_size])
 
     attention_maps = []
 
     def get_attention_maps(_module, _module_input, module_output):
-        attention_maps.append(module_output)
+        attention_maps.append(module_output.cpu())
 
     for block in model.blocks:
         if hasattr(block.attn, "fused_attn"):
@@ -92,7 +98,7 @@ def plot_attention(
 
     attention_map = attention_maps[layer]  # (batch_size, num_heads, num_patches, num_patches)
     num_heads = attention_map.shape[1]
-    cls_attention: torch.Tensor = attention_map[0, :, 0, 1:].squeeze()  # .cpu().numpy()  # (num_heads, num_patches-1)
+    cls_attention: torch.Tensor = attention_map[0, :, 0, 1:].squeeze()  # (num_heads, num_patches-1)
     cls_attention = cls_attention / torch.sum(cls_attention, dim=-1, keepdim=True)
 
     if threshold > 0:
@@ -132,6 +138,7 @@ def plot_attention(
     plt.savefig(output_dir / "attention_segmentation.pdf")
 
 
+@torch.no_grad()
 def plot_clusters(model, eval_loader: DataLoader[tuple[torch.Tensor, torch.Tensor]], output_dir: Path):
     if hasattr(eval_loader.dataset, "classes"):
         sums = torch.zeros(len(eval_loader.dataset.classes), model.num_features)  # Initialize a tensor to hold sums
@@ -139,9 +146,10 @@ def plot_clusters(model, eval_loader: DataLoader[tuple[torch.Tensor, torch.Tenso
     else:
         msg = "Ensure that the underlying dataset has an attributed named 'classes'."
         raise ValueError(msg)
-    for images, targets in tqdm(eval_loader):
+
+    for images, targets in tqdm(eval_loader, desc="Forwarding Images", unit="batch"):
         features = model(images.to(device))
-        sums.index_add_(0, index=targets, source=features)
+        sums.index_add_(0, index=targets, source=features.cpu())
         normalization_factors.index_add_(0, index=targets, source=torch.ones_like(targets, dtype=torch.float))
 
     normalization_factors[normalization_factors == 0] = 1  # avoid division by zero
@@ -154,7 +162,6 @@ def plot_clusters(model, eval_loader: DataLoader[tuple[torch.Tensor, torch.Tenso
     # Create plots
     fig, ax = plt.subplots()
     ax.scatter(pca_result[:, 0], pca_result[:, 1], c="tab:blue", s=50)
-    ax.set_title("PCA Class Embeddings")
 
     synset_names = []
     for synset_id in eval_loader.dataset.classes:
@@ -175,6 +182,29 @@ def plot_clusters(model, eval_loader: DataLoader[tuple[torch.Tensor, torch.Tenso
     plt.savefig(output_dir / "cluster_centroids_pca.pdf")
 
 
+def get_tensor_image(image_path: Path | None) -> Tensor:
+    if image_path is None:
+        raise ValueError("Provide an example image with the '--image-path' or '-i' flag.")
+
+    img = Image.open(image_path).convert("RGB")
+    transform = v2.Compose(
+        [
+            v2.ToImage(),
+            v2.ToDtype(torch.float32, scale=True),
+        ],
+    )
+    return transform(img)
+
+
+def get_model(model_path: Path | None) -> VisionTransformer:
+    if model_path is None:
+        return timm.create_model("deit_small_patch16_224", num_classes=0, dynamic_img_size=True, pretrained=True)
+
+    model = timm.create_model("deit_small_patch16_224", num_classes=0, dynamic_img_size=True)
+    model.load_state_dict(torch.load(model_path))
+    return model
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="DINO visualizations.")
 
@@ -182,52 +212,94 @@ def main() -> None:
         "--type",
         "-t",
         type=str,
-        choices=["augmentations", "attention"],
+        choices=["augmentations", "attention", "clusters"],
         default="attention",
+    )
+
+    parser.add_argument(
+        "--model-path",
+        "-m",
+        type=Path,
+        default=None,
+        help=(
+            "Path to 'deit_small_patch16_224' pretrained weights. "
+            "If left None, default pretrained weights will be loaded. Used for the 'attention' mode."
+        ),
     )
 
     parser.add_argument(
         "--image-path",
         "-i",
-        type=str,
-        required=True,
-        help="Path to the input image.",
+        type=Path,
+        default=None,
+        help="Path to the input image. Used for the 'augmentations' and 'attention' mode.",
+    )
+
+    parser.add_argument(
+        "--dataset-dir",
+        "-d",
+        type=Path,
+        default=None,
+        help="Path to a dataset directory. Used for the 'clusters' mode.",
     )
 
     parser.add_argument(
         "--output-dir",
         "-o",
-        type=str,
+        type=Path,
         required=True,
         help="Directory to save the results.",
     )
 
     args = parser.parse_args()
-    Path(args.output_dir).mkdir(parents=True, exist_ok=True)
-    img = Image.open(args.image_path).convert("RGB")
-    transform = v2.Compose(
-        [
-            v2.ToImage(),
-            v2.ToDtype(torch.float32, scale=True),
-        ],
-    )
-    tensor_image = transform(img)
+    args.output_dir.mkdir(parents=True, exist_ok=True)
+
     if args.type == "augmentations":
-        plot_original_image(tensor_image, Path(args.output_dir))
-        plot_augmentations(tensor_image, Path(args.output_dir))
+        image: Tensor = get_tensor_image(args.image_path)
+        plot_original_image(image, args.output_dir)
+        plot_augmentations(image, args.output_dir)
+
     elif args.type == "attention":
-        # TODO: Load custom model
-        model = torch.hub.load("facebookresearch/dino:main", "dino_vits8").to(device)
-        patch_size = 8
-        plot_original_image(tensor_image, Path(args.output_dir))
+        model: VisionTransformer = get_model(args.model_path)
+        model.to(device)
+
+        # Assume square patches.
+        assert model.patch_embed.patch_size[0] == model.patch_embed.patch_size[1]
+
+        image: Tensor = get_tensor_image(args.image_path)
+
+        plot_original_image(image, args.output_dir)
         plot_attention(
-            tensor_image,
-            Path(args.output_dir),
-            model,
-            patch_size,
+            image=image.to(device),
+            output_dir=args.output_dir,
+            model=model,
+            patch_size=model.patch_embed.patch_size[0],
             layer=-1,
             threshold=0.8,
         )
+
+    elif args.type == "clusters":
+        if args.dataset_dir is None:
+            raise ValueError("Provide a dataset directory with the '--dataset-dir' or '-d' flag.")
+
+        transform = v2.Compose(
+            [
+                v2.Resize((480, 480)),
+                v2.ToImage(),
+                v2.ToDtype(torch.float32, scale=True),
+                v2.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+            ],
+        )
+
+        dataset: Dataset[tuple[Tensor, Tensor]] = ImageFolder(args.dataset_dir, transform=transform)
+        data_loader: DataLoader[tuple[Tensor, Tensor]] = DataLoader(
+            dataset, batch_size=512, num_workers=8, pin_memory=True
+        )
+
+        model: VisionTransformer = get_model(args.model_path)
+        model.to(device)
+
+        plot_clusters(model, data_loader, args.output_dir)
 
 
 if __name__ == "__main__":
