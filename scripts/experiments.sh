@@ -7,6 +7,19 @@ nohup train \
   backbone.model_type=DEIT_S \
   > logs/ms2/architecture-deit-small.out 2> logs/ms2/architecture-deit-small.err < /dev/null &
 
+# Architecture DeiT-Small Evaluation
+# Learning rate uses linear scaling rule: 0.001 * batch_size / 256.
+nohup evaluate \
+  dataset_dir=/vol/tmp/dobbersc-pub/imagenet100 \
+  backbone.model_type=DEIT_S \
+  backbone.weights=models/architecture-deit-small-student.pt \
+  k=5 \
+  finetuning_mode=LINEAR_PROBE \
+  num_epochs=25 \
+  batch_size=256 \
+  base_lr=0.001 \
+  > logs/ms2/architecture-deit-small-student-evaluation.out 2> logs/ms2/architecture-deit-small-student-evaluation.err < /dev/null &
+
 # Architecture ResNet50
 nohup train \
   experiment_tag=ms2 \
@@ -15,6 +28,19 @@ nohup train \
   evaluation_dataset_dir=/vol/tmp/dobbersc-pub/imagenet100 \
   backbone.model_type=RESNET_50 \
   > logs/ms2/architecture-resnet50.out 2> logs/ms2/architecture-resnet50.err < /dev/null &
+
+# Architecture ResNet50 Evaluation
+# Learning rate uses linear scaling rule: 0.001 * batch_size / 256.
+nohup evaluate \
+  dataset_dir=/vol/tmp/dobbersc-pub/imagenet100 \
+  backbone.model_type=RESNET_50 \
+  backbone.weights=models/architecture-resnet50-student.pt \
+  k=5 \
+  finetuning_mode=LINEAR_PROBE \
+  num_epochs=25 \
+  batch_size=256 \
+  base_lr=0.001 \
+  > logs/ms2/architecture-resnet50-student-evaluation.out 2> logs/ms2/architecture-resnet50-student-evaluation.err < /dev/null &
 
 # Architecture DeiT-Small Fully Supervised
 # Learning rate uses linear scaling rule: 0.001 * batch_size / 256.
