@@ -34,17 +34,60 @@ package directly from GitHub using pip:
 pip install git+https://github.com/dobbersc/dino@master
 ```
 
-#### Experiments
+### **Experiments**
 
-Our experiments cover the training, fine-tuning and evaluation entry points. The following example commands illustrate their usage: 
+Our experiments focus on training and evaluation. After installing the package locally, you can run the `train` and `evaluate` scripts, both configurable via the Hydra interface.
 
-- Training: `dino cmd=train train.dataset_dir=/path/to/dataset/train/`
-- Fine-Tuning: `dino cmd=finetune dataset@finetune.dataset=imagenet finetune.dataset.data_dir=/path/to/dataset/train/`
-- Evaluation: `dino cmd=evaluate evaluate=knn dataset@evaluate.dataset=imagenet evaluate.dataset.data_dir=/path/to/dataset/test`
+---
 
-*Note: We provide some SLURM scripts in the `script` directory.*
+#### **Training**
+To start training, specify the dataset directory (in `ImageFolder` format):
 
-#### Development
+```bash
+train train.dataset_dir=/path/to/dataset/
+```
+
+Override parameters as needed, e.g.,:
+
+```bash
+train train.teacher_temp=0.08
+```
+
+For a full list of configurable parameters, run:
+
+```bash
+train --help
+```
+
+The trained model is saved in `model_dir`. Logs are stored in `outputs/`, and metrics are tracked with MLflow in the `runs/` directory. Visualize metrics with:
+
+```bash
+mlflow ui --backend-store-uri path/to/runs
+```
+
+---
+
+#### **Evaluation**
+To evaluate a model, specify the dataset and the model weights:
+
+```bash
+evaluate dataset.data_dir=/path/to/dataset backbone.weights=/path/to/weights
+```
+
+This script performs linear probing and k-NN evaluation by default. For customization options, run:
+
+```bash
+evaluate --help
+```
+
+It also supports basic supervised learning.
+
+---
+
+**Note:** Logs are stored in `outputs/`, and metrics are tracked with MLflow. Both scripts allow flexible configuration using Hydra.
+
+
+### Development
 
 For development, install the package, including the development dependencies:
 
