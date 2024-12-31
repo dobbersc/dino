@@ -14,19 +14,19 @@ def plot(student_accuracies: pd.DataFrame, teacher_accuracies: pd.DataFrame) -> 
 
     ax.plot(
         student_accuracies["epoch"],
-        student_accuracies["accuracy"] * 100,
+        student_accuracies["accuracy"],
         alpha=0.75,
         linestyle="--",
         label="Student",
     )
     ax.plot(
         teacher_accuracies["epoch"],
-        teacher_accuracies["accuracy"] * 100,
+        teacher_accuracies["accuracy"],
         alpha=0.75,
         label="Teacher",
     )
 
-    ax.set_ylim(0, 100)
+    ax.set_ylim(0, 1)
 
     ax.set_xlabel("Epoch")
     ax.set_ylabel("Accuracy")
