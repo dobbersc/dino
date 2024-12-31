@@ -138,6 +138,7 @@ def plot_attention(
     plt.savefig(output_dir / "attention_segmentation.pdf")
 
 
+@torch.no_grad()
 def plot_clusters(model, eval_loader: DataLoader[tuple[torch.Tensor, torch.Tensor]], output_dir: Path):
     if hasattr(eval_loader.dataset, "classes"):
         sums = torch.zeros(len(eval_loader.dataset.classes), model.num_features)  # Initialize a tensor to hold sums
@@ -145,9 +146,10 @@ def plot_clusters(model, eval_loader: DataLoader[tuple[torch.Tensor, torch.Tenso
     else:
         msg = "Ensure that the underlying dataset has an attributed named 'classes'."
         raise ValueError(msg)
-    for images, targets in tqdm(eval_loader):
+
+    for images, targets in tqdm(eval_loader, desc="Forwarding Images", unit="batch"):
         features = model(images.to(device))
-        sums.index_add_(0, index=targets, source=features)
+        sums.index_add_(0, index=targets, source=features.cpu())
         normalization_factors.index_add_(0, index=targets, source=torch.ones_like(targets, dtype=torch.float))
 
     normalization_factors[normalization_factors == 0] = 1  # avoid division by zero
@@ -160,7 +162,6 @@ def plot_clusters(model, eval_loader: DataLoader[tuple[torch.Tensor, torch.Tenso
     # Create plots
     fig, ax = plt.subplots()
     ax.scatter(pca_result[:, 0], pca_result[:, 1], c="tab:blue", s=50)
-    ax.set_title("PCA Class Embeddings")
 
     synset_names = []
     for synset_id in eval_loader.dataset.classes:
