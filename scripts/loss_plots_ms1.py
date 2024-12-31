@@ -37,7 +37,9 @@ def main() -> None:
 
     figure, ax = plt.subplots()
     for label, log_path in zip(
-        ["Imagenette", "ImageNet100", "ImageNet (Kaggle)"], [imagenette, imagenet100, imagenet_kaggle]
+        ["Imagenette", "ImageNet100", "ImageNet (Kaggle)"],
+        [imagenette, imagenet100, imagenet_kaggle],
+        strict=False,
     ):
         loss, _, _, _ = get_metrics(log_path)
         loss = loss[:10]
@@ -55,7 +57,9 @@ def main() -> None:
 
     figure, ax = plt.subplots()
     for label, log_path in zip(
-        ["Imagenette", "ImageNet100", "ImageNet (Kaggle)"], [imagenette, imagenet100, imagenet_kaggle]
+        ["Imagenette", "ImageNet100", "ImageNet (Kaggle)"],
+        [imagenette, imagenet100, imagenet_kaggle],
+        strict=False,
     ):
         _, _, _, kl_divergences = get_metrics(log_path)
         kl_divergences = kl_divergences[:10]
@@ -73,7 +77,10 @@ def main() -> None:
 
     figure, axes = plt.subplots(3, sharex=True)
     for ax, label, log_path in zip(
-        axes, ["Imagenette", "ImageNet100", "ImageNet (Kaggle)"], [imagenette, imagenet100, imagenet_kaggle]
+        axes,
+        ["Imagenette", "ImageNet100", "ImageNet (Kaggle)"],
+        [imagenette, imagenet100, imagenet_kaggle],
+        strict=False,
     ):
         _, student_entropies, teacher_entropies, _ = get_metrics(log_path)
         student_entropies = student_entropies[:10]
