@@ -44,7 +44,7 @@ Our experiments focus on training and evaluation. After installing the package l
 To start training, specify the dataset directory (in `ImageFolder` format):
 
 ```bash
-train train.dataset_dir=/path/to/dataset/
+train train.dataset_dir=/path/to/dataset/train
 ```
 
 Override parameters as needed, e.g.,:
