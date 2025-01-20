@@ -131,3 +131,57 @@ class DefaultGlobalAugmenter(Augmenter):
         )
 
         super().__init__(transforms=[first_global_view_transform, second_global_view_transform])
+
+
+class CropOnlyLocalAugmenter(Augmenter):
+    """Augmenter for local view augmentations that only applies random resize cropping and image normalization."""
+
+    def __init__(
+        self,
+        repeats: int = 8,
+        size: int | tuple[float, float] = 96,
+        scale: float | tuple[float, float] = (0.05, 0.4),
+    ) -> None:
+        """Initializes an CropOnlyLocalAugmenter.
+
+        Args:
+            repeats: The number of times the local view transform will be applied. Defaults to 8.
+            size: The size (height and width) of the transformed image. Defaults to 96.
+            scale: Specifies the lower and upper bounds for the random area of the crop, before resizing.
+                The scale is defined with respect to the area of the original image. Defaults to (0.05, 0.4).
+        """
+        local_view_transform: Transform = v2.Compose(
+            [
+                v2.RandomResizedCrop(size=size, scale=scale, interpolation=v2.InterpolationMode.BICUBIC),
+                v2.ToDtype(torch.float32, scale=True),
+                v2.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+            ],
+        )
+        super().__init__(transforms=local_view_transform, repeats=repeats)
+
+
+class CropOnlyGlobalAugmenter(Augmenter):
+    """Augmenter for global view augmentations that only applies random resize cropping and image normalization."""
+
+    def __init__(
+        self,
+        repeats: int = 2,
+        size: int | tuple[float, float] = 224,
+        scale: float | tuple[float, float] = (0.4, 1.0),
+    ) -> None:
+        """Initializes an CropOnlyGlobalAugmenter.
+
+        Args:
+            repeats: The number of times the global view transform will be applied. Defaults to 2.
+            size: The size (height and width) of the transformed image. Defaults to 224.
+            scale: Specifies the lower and upper bounds for the random area of the crop, before resizing.
+                The scale is defined with respect to the area of the original image. Defaults to (0.4, 1.0).
+        """
+        global_view_transform: Transform = v2.Compose(
+            [
+                v2.RandomResizedCrop(size=size, scale=scale, interpolation=v2.InterpolationMode.BICUBIC),
+                v2.ToDtype(torch.float32, scale=True),
+                v2.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+            ],
+        )
+        super().__init__(transforms=global_view_transform, repeats=repeats)
