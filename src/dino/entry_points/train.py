@@ -1,6 +1,7 @@
 import logging
 from collections.abc import Callable, Sized
 from dataclasses import dataclass, field
+from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
@@ -14,6 +15,13 @@ from torch.utils.data import DataLoader, Dataset
 from torchvision.datasets import ImageFolder
 from torchvision.transforms import v2
 
+from dino.augmentation import (
+    Augmenter,
+    CropOnlyGlobalAugmenter,
+    CropOnlyLocalAugmenter,
+    DefaultGlobalAugmenter,
+    DefaultLocalAugmenter,
+)
 from dino.datasets import DatasetConfig, UnlabelledDataset, val_transform
 from dino.evaluators import KNNEvaluator
 from dino.models import BackboneConfig, HeadConfig, ModelWithHead, load_model_with_head
@@ -35,6 +43,11 @@ if TYPE_CHECKING:
 logger: logging.Logger = logging.getLogger(__name__)
 
 
+class AugmentationPipeline(Enum):
+    DINO_DEFAULT = "dino_default"
+    CROP_ONLY = "crop_only"
+
+
 @dataclass
 class TrainingConfig:
     model_dir: str = str(Path.cwd() / "models")
@@ -50,6 +63,10 @@ class TrainingConfig:
 
     backbone: BackboneConfig = field(default_factory=BackboneConfig)
     head: HeadConfig = field(default_factory=HeadConfig)
+
+    augmentation_pipeline: AugmentationPipeline = AugmentationPipeline.DINO_DEFAULT
+    local_augmenter_crop_scale: tuple[float, float] = (0.05, 0.4)
+    global_augmenter_crop_scale: tuple[float, float] = (0.4, 1.0)
 
     batch_size: int = 128
     max_epochs: int = 100
@@ -123,9 +140,36 @@ def build_post_epoch_evaluator(cfg: TrainingConfig) -> Callable[[nn.Module], dic
     return evaluate
 
 
+def build_augmenters(cfg: TrainingConfig) -> tuple[Augmenter, Augmenter]:
+    match cfg.augmentation_pipeline:
+        case AugmentationPipeline.DINO_DEFAULT:
+            return (
+                DefaultLocalAugmenter(scale=cfg.local_augmenter_crop_scale),
+                DefaultGlobalAugmenter(scale=cfg.global_augmenter_crop_scale),
+            )
+        case AugmentationPipeline.CROP_ONLY:
+            return (
+                CropOnlyLocalAugmenter(scale=cfg.local_augmenter_crop_scale),
+                CropOnlyGlobalAugmenter(scale=cfg.global_augmenter_crop_scale),
+            )
+        case _:
+            msg: str = f"Invalid identifier ({cfg.augmentation_pipeline!r}) for the 'augmentation_pipeline' parameter."  # type: ignore[unreachable]
+            raise ValueError(msg)
+
+
 @hydra.main(version_base=None, config_path="../conf", config_name="train_config")
 def train(cfg: TrainingConfig) -> None:
     set_seed(42)
+
+    # As tuple are not supported by OmegaConf, we convert the crop scale arguments to tuples.
+    if len(cfg.local_augmenter_crop_scale) != 2 or len(cfg.global_augmenter_crop_scale) != 2:  # noqa: PLR2004
+        msg: str = (  # type: ignore[unreachable]
+            "The crop scale parameters expect two values as the lower and upper bounds for the random area of the crop"
+            f"; but received {cfg.local_augmenter_crop_scale=} and {cfg.global_augmenter_crop_scale=}."
+        )
+        raise ValueError(msg)
+    cfg.local_augmenter_crop_scale = tuple(cfg.local_augmenter_crop_scale)  # type: ignore[assignment]
+    cfg.global_augmenter_crop_scale = tuple(cfg.global_augmenter_crop_scale)  # type: ignore[assignment]
 
     logger.info(OmegaConf.to_yaml(cfg))
     cfg = cast(TrainingConfig, OmegaConf.to_object(cfg))
@@ -139,10 +183,13 @@ def train(cfg: TrainingConfig) -> None:
         dataset=ImageFolder(cfg.dataset.data_dir, transform=v2.ToImage()),
     )
 
+    local_augmenter, global_augmenter = build_augmenters(cfg)
     trainer: DINOTrainer = DINOTrainer(
         student=student_with_head,
         teacher=teacher_with_head,
         view_dataset=view_dataset,
+        local_augmenter=local_augmenter,
+        global_augmenter=global_augmenter,
         after_epoch_evaluator=build_post_epoch_evaluator(cfg),
     )
 
@@ -164,7 +211,7 @@ def train(cfg: TrainingConfig) -> None:
     logger.info("Using teacher momentum scheduler: %s", teacher_momentum)
 
     if cfg.teacher_temperature_warmup_epochs > cfg.max_epochs:
-        msg: str = (
+        msg = (
             f"The number of warmup epochs for the teacher temperature ({cfg.teacher_temperature_warmup_epochs}) "
             f"must not be greater than the number of maximum epochs ({cfg.max_epochs})."
         )
