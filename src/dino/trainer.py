@@ -72,6 +72,8 @@ class DINOTrainer:
         logger.info(LOG_SEPARATOR)
         logger.info("Dataset Information:")
         logger.info(" - train: %d data points", len(self.view_dataset))
+        logger.info(" - local_augmenter: %r", self.view_dataset.local_augmenter)
+        logger.info(" - global_augmenter: %r", self.view_dataset.global_augmenter)
 
     @staticmethod
     def multi_forward(model: nn.Module, views: list[Tensor]) -> Tensor:

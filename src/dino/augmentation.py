@@ -52,6 +52,9 @@ class Augmenter(nn.Module):
             for _ in range(repeat)
         ]
 
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}(transforms={self.transforms!r}, repeats={self.repeats!r})"
+
 
 class DefaultLocalAugmenter(Augmenter):
     """Default Augmenter for local view augmentations of the DINO paper."""
