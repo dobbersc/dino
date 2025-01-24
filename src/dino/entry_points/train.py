@@ -67,6 +67,7 @@ class TrainingConfig:
     augmentation_pipeline: AugmentationPipeline = AugmentationPipeline.DINO_DEFAULT
     local_augmenter_crop_scale: tuple[float, float] = (0.05, 0.4)
     global_augmenter_crop_scale: tuple[float, float] = (0.4, 1.0)
+    local_augmenter_num_views: int = 8
 
     batch_size: int = 128
     max_epochs: int = 100
@@ -144,12 +145,12 @@ def build_augmenters(cfg: TrainingConfig) -> tuple[Augmenter, Augmenter]:
     match cfg.augmentation_pipeline:
         case AugmentationPipeline.DINO_DEFAULT:
             return (
-                DefaultLocalAugmenter(scale=cfg.local_augmenter_crop_scale),
+                DefaultLocalAugmenter(repeats=cfg.local_augmenter_num_views, scale=cfg.local_augmenter_crop_scale),
                 DefaultGlobalAugmenter(scale=cfg.global_augmenter_crop_scale),
             )
         case AugmentationPipeline.CROP_ONLY:
             return (
-                CropOnlyLocalAugmenter(scale=cfg.local_augmenter_crop_scale),
+                CropOnlyLocalAugmenter(repeats=cfg.local_augmenter_num_views, scale=cfg.local_augmenter_crop_scale),
                 CropOnlyGlobalAugmenter(scale=cfg.global_augmenter_crop_scale),
             )
         case _:
