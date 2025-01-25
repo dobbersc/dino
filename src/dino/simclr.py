@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Callable
 
 import torch
 import torch.nn.functional as F
@@ -39,6 +40,7 @@ class SimCLR:
         temperature,
         epochs,
         fp16_precision=False,
+        evaluator: Callable[[torch.nn.Module], dict[str, float]] | None = None,
     ):
         self.model = model
         self.optimizer = optimizer
@@ -50,6 +52,7 @@ class SimCLR:
         self.epochs = epochs
         self.fp16_precision = fp16_precision
         self.criterion = torch.nn.CrossEntropyLoss().to(self.device)
+        self.evaluator = evaluator
 
     def info_nce_loss(self, features):
         labels = torch.cat(
@@ -119,6 +122,10 @@ class SimCLR:
                     logger.info("Step %d: Learning Rate = %.6f", n_iter, learning_rate)
 
                 n_iter += 1
+
+            if self.evaluator is not None:
+                eval_results = self.evaluator(self.model)
+                logger.info("Step %d: Evaluation results: %s", n_iter, eval_results)
 
             # warmup for the first 10 epochs
             if epoch_counter >= 10:

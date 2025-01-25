@@ -175,7 +175,7 @@ class SimCLRHead(nn.Module):
 
     def forward(self, x):
         return self.projection(x)
-    
+
 class ModelWithHead(nn.Module):
     """Combines a backbone model with a classification head."""
 

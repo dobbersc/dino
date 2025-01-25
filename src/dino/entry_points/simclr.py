@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Callable, Sized
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -6,9 +7,13 @@ import hydra
 import torch
 from hydra.core.config_store import ConfigStore
 from omegaconf import MISSING, OmegaConf
+from torch import Tensor, nn
+from torch.utils.data import DataLoader, Dataset
+from torchvision.datasets import ImageFolder
 
-from dino.datasets import ContrastiveLearningDataset
-from dino.models import BackboneConfig, HeadConfig, HeadType, load_model_with_head
+from dino.datasets import ContrastiveLearningDataset, val_transform
+from dino.evaluators import KNNEvaluator
+from dino.models import BackboneConfig, HeadConfig, HeadType, ModelWithHead, load_model_with_head
 from dino.simclr import SimCLR
 from dino.utils.torch import detect_device
 
@@ -16,11 +21,21 @@ logger: logging.Logger = logging.getLogger(__name__)
 
 
 @dataclass
+class EvaluatorConfig:
+    data_dir: str = MISSING
+    train: str = "train"
+    validation: str = "val"
+    knn_k: int = 5
+    batch_size: int = 256
+    num_workers: int = 1
+
+
+@dataclass
 class SimCLRConfig:
     data_dir: str = MISSING
     n_views: int = 2
     image_size: int = 96
-    batch_size: int = 1
+    batch_size: int = 64
     num_workers: int = 1
     epochs: int = 100
     learning_rate: float = 0.0003
@@ -40,9 +55,56 @@ class SimCLRConfig:
     model_dir: str = str(Path.cwd() / "models")
     model_tag: str | None = None
 
+    evaluator: EvaluatorConfig = field(default_factory=EvaluatorConfig)
+
 
 _cs = ConfigStore.instance()
 _cs.store(name="base_simclr_config", node=SimCLRConfig)
+
+
+def build_post_epoch_evaluator(
+    cfg: EvaluatorConfig, device: torch.device,
+) -> Callable[[nn.Module], dict[str, float]] | None:
+    if cfg.data_dir is None:
+        return None
+
+    train_dataset: Dataset[tuple[Tensor, Tensor]] = ImageFolder(
+        Path(cfg.data_dir) / cfg.train,
+        transform=val_transform,
+    )
+    validation_dataset: Dataset[tuple[Tensor, Tensor]] = ImageFolder(
+        Path(cfg.data_dir) / cfg.validation,
+        transform=val_transform,
+    )
+
+    train_data_loader: DataLoader[tuple[Tensor, Tensor]] = DataLoader(
+        train_dataset,
+        batch_size=cfg.batch_size,
+        shuffle=True,
+        num_workers=cfg.num_workers,
+        pin_memory=device == "cuda",
+    )
+    validation_data_loader: DataLoader[tuple[Tensor, Tensor]] = DataLoader(
+        validation_dataset,
+        batch_size=cfg.batch_size,
+        num_workers=cfg.num_workers,
+        pin_memory=device == "cuda",
+    )
+
+    assert isinstance(train_dataset, Sized)
+    assert isinstance(validation_dataset, Sized)
+    logger.info("Loaded knn train dataset of %d data points", len(train_dataset))
+    logger.info("Loaded knn validation dataset of %d data points", len(validation_dataset))
+
+    def evaluate(model: nn.Module) -> dict[str, float]:
+        if isinstance(model, ModelWithHead):
+            model = model.model  # Remove head from ModelWithHead.
+
+        evaluator: KNNEvaluator = KNNEvaluator(validation_data_loader, train_data_loader, model)
+        accuracy: float = evaluator.evaluate(k=cfg.knn_k)
+        return {"accuracy": accuracy}
+
+    return evaluate
 
 
 @hydra.main(version_base=None, config_name="base_simclr_config")
@@ -82,6 +144,8 @@ def main(cfg: SimCLRConfig):
         last_epoch=-1,
     )
 
+    evaluator = build_post_epoch_evaluator(cfg.evaluator, device)
+
     simclr = SimCLR(
         model=model,
         optimizer=optimizer,
@@ -92,6 +156,7 @@ def main(cfg: SimCLRConfig):
         temperature=cfg.temperature,
         n_views=cfg.n_views,
         fp16_precision=cfg.fp16_precision,
+        evaluator=evaluator,
     )
     simclr.train(train_loader)
 
