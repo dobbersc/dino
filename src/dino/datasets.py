@@ -495,7 +495,7 @@ class ContrastiveLearningViewGenerator:
 
 
 class ContrastiveLearningDataset(Dataset):
-    def __init__(self, data_dir: str | Path, s=1, size=92, n_views=2):
+    def __init__(self, data_dir: str | Path, s=1, size=224, n_views=2):
         self.data_dir = data_dir
         self.image_ds = ImageFolder(data_dir)
         self.transform = ContrastiveLearningViewGenerator(

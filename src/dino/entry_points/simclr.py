@@ -34,13 +34,13 @@ class EvaluatorConfig:
 class SimCLRConfig:
     data_dir: str = MISSING
     n_views: int = 2
-    image_size: int = 96
-    batch_size: int = 64
+    image_size: int = 224
+    batch_size: int = 64 # needs to be adjusted
     num_workers: int = 1
     epochs: int = 100
-    learning_rate: float = 0.0003
-    weight_decay: float = 1e-4
-    temperature: float = 0.07
+    learning_rate: float = 0.0003 # default as in the repo 
+    weight_decay: float = 1e-4 # default as in the repo 
+    temperature: float = 0.07 # default as in the repo 
     fp16_precision: bool = False
 
     backbone: BackboneConfig = field(default_factory=BackboneConfig)
