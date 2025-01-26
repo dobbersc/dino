@@ -161,7 +161,7 @@ class SimCLR:
                 n_iter += 1
                 batch_index += 1
 
-            logger.info("EPOCH %d DONE (step %d)", epoch_counter, n_iter)
+            logger.info("EPOCH %d DONE", epoch_counter, n_iter)
 
             # Average running epoch metrics
             epoch_loss /= len(train_loader)
