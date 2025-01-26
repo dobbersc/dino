@@ -65,10 +65,7 @@ _cs = ConfigStore.instance()
 _cs.store(name="base_simclr_config", node=SimCLRConfig)
 
 
-def build_post_epoch_evaluator(
-    cfg: EvaluatorConfig,
-    device: torch.device,
-) -> Callable[[nn.Module], dict[str, float]] | None:
+def build_post_epoch_evaluator(cfg: EvaluatorConfig) -> Callable[[nn.Module], dict[str, float]] | None:
     if cfg.data_dir is None:
         return None
 
@@ -86,13 +83,13 @@ def build_post_epoch_evaluator(
         batch_size=cfg.batch_size,
         shuffle=True,
         num_workers=cfg.num_workers,
-        pin_memory=device == "cuda",
+        pin_memory=True,
     )
     validation_data_loader: DataLoader[tuple[Tensor, Tensor]] = DataLoader(
         validation_dataset,
         batch_size=cfg.batch_size,
         num_workers=cfg.num_workers,
-        pin_memory=device == "cuda",
+        pin_memory=True,
     )
 
     assert isinstance(train_dataset, Sized)
@@ -129,7 +126,7 @@ def main(cfg: SimCLRConfig):
         batch_size=cfg.batch_size,
         shuffle=True,
         num_workers=cfg.num_workers,
-        pin_memory=device == "cuda",
+        pin_memory=True,
         drop_last=True,
     )
     cfg.head.model_type = HeadType.SIMCLR_HEAD
@@ -149,7 +146,7 @@ def main(cfg: SimCLRConfig):
         last_epoch=-1,
     )
 
-    evaluator = build_post_epoch_evaluator(cfg.evaluator, device)
+    evaluator = build_post_epoch_evaluator(cfg.evaluator)
 
     simclr = SimCLR(
         model=model,
