@@ -100,7 +100,7 @@ class SimCLR:
         logger.info(self.model)
 
         n_iter = 1  # Total step counter
-        for epoch_counter in tqdm(range(1, self.epochs + 1)):
+        for epoch_counter in range(1, self.epochs + 1):
             logger.info(LOG_SEPARATOR)
             logger.info("EPOCH %d; STEP %d", epoch_counter, n_iter)
 
