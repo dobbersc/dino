@@ -25,7 +25,7 @@ logger: logging.Logger = logging.getLogger(__name__)
 
 @dataclass
 class EvaluatorConfig:
-    data_dir: str = MISSING
+    data_dir: str | None = None
     train: str = "train"
     validation: str = "val"
     knn_k: int = 5
