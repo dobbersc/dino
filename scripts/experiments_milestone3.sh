@@ -1,3 +1,15 @@
+# SimCLR DeiT-Small
+nohup simclr \
+  experiment_tag=ms3-simclr \
+  model_tag=simclr-deit-small \
+  data_dir=/vol/tmp/dobbersc-pub/imagenet100/train \
+  num_workers=8 \
+  evaluator.data_dir=/vol/tmp/dobbersc-pub/imagenet100 \
+  evaluator.num_workers=8 \
+  batch_size=256 \
+  epochs=200 \
+  > logs/ms3/simclr-deit-small.out 2> logs/ms3/simclr-deit-small.err < /dev/null &
+
 # Augmentations: Crop Only
 nohup train \
   experiment_tag=ms3 \
