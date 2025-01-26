@@ -6,6 +6,7 @@ from pathlib import Path
 import hydra
 import mlflow
 import torch
+from dino.utils.random import set_seed
 from hydra.core.config_store import ConfigStore
 from omegaconf import MISSING, OmegaConf
 from torch import Tensor, nn
@@ -110,6 +111,8 @@ def build_post_epoch_evaluator(cfg: EvaluatorConfig) -> Callable[[nn.Module], di
 
 @hydra.main(version_base=None, config_name="base_simclr_config")
 def main(cfg: SimCLRConfig):
+    set_seed(42)
+
     logger.info(OmegaConf.to_yaml(cfg))
     cfg = OmegaConf.to_object(cfg)
 
