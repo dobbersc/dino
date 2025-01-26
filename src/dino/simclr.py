@@ -6,6 +6,8 @@ import torch.nn.functional as F
 from torch.cuda.amp import GradScaler, autocast
 from tqdm import tqdm
 
+from dino.utils.logging import mlflow_log_metrics
+
 logger = logging.getLogger(__name__)
 
 
@@ -123,10 +125,23 @@ class SimCLR:
 
                 n_iter += 1
 
+            metrics = {
+                "loss": loss.item(),
+                "top1-accuracy": top1[0].item(),
+                "top5-accuracy": top5[0].item(),
+                "learning-rate": learning_rate,
+            }
+
             if self.evaluator is not None:
                 eval_results = self.evaluator(self.model)
+                metrics.update(eval_results)
                 logger.info("Step %d: Evaluation results: %s", n_iter, eval_results)
 
+            mlflow_log_metrics(
+                "train_batch",
+                metrics=metrics,
+                step=epoch_counter,
+            )
             # warmup for the first 10 epochs
             if epoch_counter >= 10:
                 self.scheduler.step()

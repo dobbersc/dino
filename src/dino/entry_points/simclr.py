@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import hydra
+import mlflow
 import torch
 from hydra.core.config_store import ConfigStore
 from omegaconf import MISSING, OmegaConf
@@ -15,6 +16,7 @@ from dino.datasets import ContrastiveLearningDataset, val_transform
 from dino.evaluators import KNNEvaluator
 from dino.models import BackboneConfig, HeadConfig, HeadType, ModelWithHead, load_model_with_head
 from dino.simclr import SimCLR
+from dino.utils.logging import log_hydra_config_to_mlflow
 from dino.utils.torch import detect_device
 
 logger: logging.Logger = logging.getLogger(__name__)
@@ -35,12 +37,12 @@ class SimCLRConfig:
     data_dir: str = MISSING
     n_views: int = 2
     image_size: int = 224
-    batch_size: int = 64 # needs to be adjusted
+    batch_size: int = 64  # needs to be adjusted
     num_workers: int = 1
     epochs: int = 100
-    learning_rate: float = 0.0003 # default as in the repo 
-    weight_decay: float = 1e-4 # default as in the repo 
-    temperature: float = 0.07 # default as in the repo 
+    learning_rate: float = 0.0003  # default as in the repo
+    weight_decay: float = 1e-4  # default as in the repo
+    temperature: float = 0.07  # default as in the repo
     fp16_precision: bool = False
 
     backbone: BackboneConfig = field(default_factory=BackboneConfig)
@@ -54,6 +56,7 @@ class SimCLRConfig:
 
     model_dir: str = str(Path.cwd() / "models")
     model_tag: str | None = None
+    experiment_tag: str = "Default"
 
     evaluator: EvaluatorConfig = field(default_factory=EvaluatorConfig)
 
@@ -63,7 +66,8 @@ _cs.store(name="base_simclr_config", node=SimCLRConfig)
 
 
 def build_post_epoch_evaluator(
-    cfg: EvaluatorConfig, device: torch.device,
+    cfg: EvaluatorConfig,
+    device: torch.device,
 ) -> Callable[[nn.Module], dict[str, float]] | None:
     if cfg.data_dir is None:
         return None
@@ -110,6 +114,7 @@ def build_post_epoch_evaluator(
 @hydra.main(version_base=None, config_name="base_simclr_config")
 def main(cfg: SimCLRConfig):
     logger.info(OmegaConf.to_yaml(cfg))
+    cfg = OmegaConf.to_object(cfg)
 
     ds = ContrastiveLearningDataset(
         data_dir=cfg.data_dir,
@@ -158,7 +163,16 @@ def main(cfg: SimCLRConfig):
         fp16_precision=cfg.fp16_precision,
         evaluator=evaluator,
     )
-    simclr.train(train_loader)
 
-    model_name = cfg.model_tag or f"{cfg.backbone.model_type.value}_simclr"
-    model.save_backbone(Path(cfg.model_dir) / model_name)
+    # Initialize mlflow and create run context.
+    mlflow.set_tracking_uri(Path.cwd() / "runs")
+    mlflow.set_experiment(cfg.experiment_tag)
+
+    model_tag = cfg.model_tag or f"{cfg.backbone.model_type.value}_simclr"
+
+    with mlflow.start_run(run_name=model_tag):
+        # Log configuration parameters.
+        log_hydra_config_to_mlflow(cfg)
+        simclr.train(train_loader)
+
+    model.save_backbone(Path(cfg.model_dir) / model_tag)
