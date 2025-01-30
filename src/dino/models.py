@@ -19,6 +19,7 @@ class ModelType(Enum):
 class HeadType(Enum):
     LINEAR = "linear"
     DINO_HEAD = "dino_head"
+    SIMCLR_HEAD = "simclr_head"
 
 
 @dataclass
@@ -162,6 +163,18 @@ class DINOHeadNormalized(DINOHead):
         super().__init__(*args, **kwargs)
         self.last_layer.weight_g.requires_grad = False
 
+class SimCLRHead(nn.Module):
+    def __init__(self, in_dim, hidden_dim, out_dim):
+        """A projection head for SimCLR with a two-layer MLP."""
+        super().__init__()
+        self.projection = nn.Sequential(
+            nn.Linear(in_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, out_dim),
+        )
+
+    def forward(self, x):
+        return self.projection(x)
 
 class ModelWithHead(nn.Module):
     """Combines a backbone model with a classification head."""
@@ -279,6 +292,8 @@ def _load_head(
             head = LinearHead(embed_dim, output_dim)
         case HeadType.DINO_HEAD:
             head = DINOHead(embed_dim, output_dim=output_dim, hidden_dim=hidden_dim)
+        case HeadType.SIMCLR_HEAD:
+            head = SimCLRHead(embed_dim, hidden_dim, output_dim)
         case _:
             msg = f"Head type {head_type} is not supported"
             raise NotImplementedError(msg)

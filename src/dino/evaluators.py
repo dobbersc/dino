@@ -51,7 +51,7 @@ class KNNEvaluator(Evaluator):
         return float(accuracy_score(eval_targets, predictions, normalize=True))
 
     def _extract_features(
-        self, loader: DataLoader[Batch], device: torch.device, split: str
+        self, loader: DataLoader[Batch], device: torch.device, split: str,
     ) -> tuple[list[NDArray[Any]], list[NDArray[Any]]]:
         features, targets = [], []
         logger.info("Extracting %s features ...", split)

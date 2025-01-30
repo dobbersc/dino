@@ -59,6 +59,7 @@ dev = [
 [project.scripts]
 evaluate = "dino.entry_points.evaluate:evaluate"
 train = "dino.entry_points.train:train"
+simclr = "dino.entry_points.simclr:main"
 
 [tool.black]
 line-length = 120
