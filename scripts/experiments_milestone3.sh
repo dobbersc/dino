@@ -10,6 +10,19 @@ nohup simclr \
   epochs=200 \
   > logs/ms3/simclr-deit-small.out 2> logs/ms3/simclr-deit-small.err < /dev/null &
 
+# SimCLR ResNet50
+nohup simclr \
+  experiment_tag=ms3-simclr \
+  model_tag=simclr-resnet50 \
+  data_dir=/vol/tmp/dobbersc-pub/imagenet100/train \
+  num_workers=8 \
+  evaluator.data_dir=/vol/tmp/dobbersc-pub/imagenet100 \
+  evaluator.num_workers=8 \
+  batch_size=256 \
+  epochs=100 \
+  backbone.model_type=RESNET_50 \
+  > logs/ms3/simclr-resnet50.out 2> logs/ms3/simclr-resnet50.err < /dev/null &
+
 # Augmentations: Crop Only
 nohup train \
   experiment_tag=ms3 \
@@ -91,3 +104,13 @@ nohup train \
   evaluation_dataset_dir=/vol/tmp/dobbersc-pub/imagenet100 \
   local_augmenter_num_views=16 \
   > logs/ms3/number-local-views-16.out 2> logs/ms3/number-local-views-16.err < /dev/null &
+
+# Number Local Views (16) Less Epochs
+nohup train \
+  experiment_tag=ms3 \
+  model_tag=number-local-views-16-e50 \
+  dataset.data_dir=/vol/tmp/dobbersc-pub/imagenet100/train \
+  evaluation_dataset_dir=/vol/tmp/dobbersc-pub/imagenet100 \
+  max_epochs=50 \
+  local_augmenter_num_views=16 \
+  > logs/ms3/number-local-views-16-e50.out 2> logs/ms3/number-local-views-16-e50.err < /dev/null &
