@@ -10,6 +10,19 @@ nohup simclr \
   epochs=200 \
   > logs/ms3/simclr-deit-small.out 2> logs/ms3/simclr-deit-small.err < /dev/null &
 
+# Architecture DeiT-Small Evaluation
+# Learning rate uses linear scaling rule: 0.001 * batch_size / 256.
+nohup evaluate \
+  dataset_dir=/vol/tmp/dobbersc-pub/imagenet100 \
+  backbone.model_type=DEIT_S \
+  backbone.weights=models/simclr-deit-small.pt \
+  k=5 \
+  finetuning_mode=LINEAR_PROBE \
+  num_epochs=25 \
+  batch_size=256 \
+  base_lr=0.001 \
+  > logs/ms3/simclr-deit-small-evaluation.out 2> logs/ms3/simclr-deit-small-evaluation.err < /dev/null &
+
 # SimCLR ResNet50
 nohup simclr \
   experiment_tag=ms3-simclr \
@@ -22,6 +35,19 @@ nohup simclr \
   epochs=100 \
   backbone.model_type=RESNET_50 \
   > logs/ms3/simclr-resnet50.out 2> logs/ms3/simclr-resnet50.err < /dev/null &
+
+# Architecture DeiT-Small Evaluation
+# Learning rate uses linear scaling rule: 0.001 * batch_size / 256.
+nohup evaluate \
+  dataset_dir=/vol/tmp/dobbersc-pub/imagenet100 \
+  backbone.model_type=RESNET_50 \
+  backbone.weights=models/simclr-resnet50.pt \
+  k=5 \
+  finetuning_mode=LINEAR_PROBE \
+  num_epochs=25 \
+  batch_size=256 \
+  base_lr=0.001 \
+  > logs/ms3/simclr-resnet50-evaluation.out 2> logs/ms3/simclr-resnet50-evaluation.err < /dev/null &
 
 # Augmentations: Crop Only
 nohup train \
